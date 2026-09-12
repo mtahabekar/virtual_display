@@ -1,8 +1,10 @@
 # Quest Displays — Ubuntu host
 
-The host prototype now creates three KDE virtual monitors, captures each independently through PipeWire, hardware-encodes each with NVIDIA NVENC, and serves three H.264 streams over localhost TCP. A Linux test receiver has received and decoded all three streams, including after reconnecting. No Quest connection is needed for this host-side workflow.
+The host prototype now creates three KDE virtual monitors, captures each independently through PipeWire, hardware-encodes each with NVIDIA NVENC, and serves three H.264 streams over localhost TCP. A Linux test receiver and the [Quest 3 client](https://github.com/mtahabekar/Quest-Linux-Virtual-Desktop) have received and hardware-decoded all three streams, including after reconnecting. A Quest is not required to start or diagnose the host.
 
 **Current limitation: the 3 × 1440p @ 60 FPS performance target is not met.** The final moving-pattern test delivered 36.8 / 37.6 / 38.0 FPS, with zero host queue drops. A single monitor delivered about 53 FPS. This is a functioning prototype, not a completed performance optimization.
+
+The first headset run exposed transport-lock starvation that made QUEST-1 and QUEST-3 freeze while QUEST-2 remained responsive. The corrected Quest-connected run was balanced at 34.1 / 34.6 / 35.0 FPS with zero capture-queue drops or transport discards. The fix is installed in the running user service; details are in the [Quest 3 end-to-end report](docs/quest-e2e-report.md).
 
 ## Current installation and everyday commands
 
@@ -154,7 +156,7 @@ adb -s DEVICE_SERIAL reverse --remove tcp:27183
 
 Replace `DEVICE_SERIAL` with the authorized USB device. The future Android client connects to `127.0.0.1:27183` on the device, and ADB carries the connection to the Linux loopback server. Recreate the mapping after USB reconnects if needed. This is ordinary ADB application data, not Quest Link. ADB forward serves the opposite connection direction. See the [official ADB manual](https://android.googlesource.com/platform/packages/modules/adb/+/HEAD/docs/user/adb.1.md).
 
-No device tunnel, Android decoder or glass-to-glass latency has been tested; those require an attached Android/Quest device and the separately developed client. No Quest application, 3D renderer, OpenXR, tracking, input forwarding, audio, clipboard or file transfer has been implemented.
+The USB tunnel and three simultaneous Quest 3 hardware decoders were tested on September 12, 2026. Host restart, app pause/resume, missing-tunnel recovery, and one minute of static streaming passed. Exact glass-to-glass latency and a physical cable disconnect/reconnect have not been measured. The Quest client remains a separate project; this host implements no 3D renderer, OpenXR, tracking, input forwarding, audio, clipboard or file transfer.
 
 ## Results and remaining work
 
@@ -168,9 +170,9 @@ Single-monitor capture: 52.7 FPS with zero host queue drops. Single-monitor live
 
 These are delivered sample rates, not a measurement of unique compositor presentations. Original source timestamps sometimes repeat or regress; upstream losses cannot be measured here. All three final streams had zero wire timestamp adjustments. The final three-stream resource samples averaged 85.5% of one CPU core in the host and 89.9% in KWin, with 47.8% GPU and 29.1% encoder utilization. GPU utilization includes the desktop and test windows. Pattern bitrate was around 1 Mbps per stream and does not predict browser/video workloads.
 
-[Final benchmark and resource samples](docs/final-benchmark.json), [incremental milestone results](docs/milestone-results.json), and [twelve-file decoder validation](docs/video-validation.json) preserve the evidence. The final recordings decoded all 737 / 753 / 760 frames without errors. [Current host diagnostics](docs/current-host-report.json) also pass. Three distinct decoded test windows were visually inspected. Local initial-connect, reconnect, idle operation, service restart, and saved arrangement restoration passed. Autostart is enabled, but login/reboot testing remains outstanding.
+[Final benchmark and resource samples](docs/final-benchmark.json), [incremental milestone results](docs/milestone-results.json), and [twelve-file decoder validation](docs/video-validation.json) preserve the host evidence. The final recordings decoded all 737 / 753 / 760 frames without errors. [Current host diagnostics](docs/current-host-report.json) also pass. The [Quest 3 end-to-end report](docs/quest-e2e-report.md) records USB, hardware-decoder, lifecycle, restart, idle, and tunnel-recovery tests. Autostart is enabled, but login/reboot testing remains outstanding.
 
-Further host work is performance profiling toward 3×60 FPS, reducing frame readback/copy cost, longer-running stability tests, and representative text/browser workloads. HDR, zero-copy, HEVC/AV1 and 4:4:4 are not part of this prototype. H.264 hardware decoding on Quest and USB end-to-end performance remain client-stage validation.
+Further host work is performance profiling toward 3×60 FPS, reducing frame readback/copy cost, longer-running stability tests, and representative text/browser workloads. HDR, zero-copy, HEVC/AV1 and 4:4:4 are not part of this prototype. Quest H.264 hardware decoding and USB transport now work; subjective text quality, controller/hand panel manipulation, exact end-to-end latency, and thermal endurance still need headset-user validation.
 
 ## Architecture and troubleshooting
 

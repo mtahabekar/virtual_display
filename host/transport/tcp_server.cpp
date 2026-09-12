@@ -51,13 +51,21 @@ TransportServer::~TransportServer()
 }
 void TransportServer::publish(EncodedPacket p)
 {
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (!connected || disconnect) return;
+        if (waitingForKeyframe.at(p.monitorId) && !p.keyframe) { ++dropped; return; }
+    }
+    // Framing allocates and copies the complete access unit. Keep that work out
+    // of the shared queue lock so one high-rate stream cannot block the other
+    // encoder workers long enough to starve their two-frame capture queues.
+    auto framed = framePacket(p);
     std::lock_guard<std::mutex> lock(mutex);
     if (!connected || disconnect) return;
     if (waitingForKeyframe.at(p.monitorId)) {
         if (!p.keyframe) { ++dropped; return; }
         waitingForKeyframe[p.monitorId] = false;
     }
-    auto framed = framePacket(p);
     // Disconnect instead of silently dropping predictive H.264 frames. On
     // reconnect all streams resume from a newly requested IDR with SPS/PPS.
     if (queue.size() >= 12 || queuedBytes + framed.size() > 16 * 1024 * 1024) {
