@@ -1,0 +1,261 @@
+{
+  "benchmark": {
+    "streams": [
+      {
+        "bitrate_mbps": 0.9805180331367054,
+        "bytes": 2455208,
+        "capture_fps": 36.791271372005546,
+        "capture_frames": 737,
+        "capture_pending_at_stop": 0,
+        "codec": "h264",
+        "encode_latency_max_ms": 18.970705,
+        "encode_latency_mean_ms": 8.10203144911805,
+        "encoded_fps": 36.791271372005546,
+        "encoded_frames": 737,
+        "encoder": "h264_nvenc",
+        "height": 1440,
+        "host_static_repeat_ms": 1000,
+        "monitor_id": 0,
+        "note": "Encode latency includes CPU copy/upload to packet availability, not display-to-display latency. Capture FPS excludes host static repeats. Wire PTS timestamps host sample consumption. Upstream losses unknown.",
+        "output": "Virtual-QUEST-1",
+        "pipewire_keepalive_ms": 0,
+        "pipewire_serial": "462",
+        "queue_dropped": 0,
+        "seconds": 20.031925305,
+        "source_timestamp_nonmonotonic": 50,
+        "static_repeat_frames": 0,
+        "target_fps": 60,
+        "timestamp_adjustments": 0,
+        "width": 2560
+      },
+      {
+        "bitrate_mbps": 1.0523517026561882,
+        "bytes": 2631302,
+        "capture_fps": 37.643951174176784,
+        "capture_frames": 753,
+        "capture_pending_at_stop": 0,
+        "codec": "h264",
+        "encode_latency_max_ms": 16.400088,
+        "encode_latency_mean_ms": 7.720656310756967,
+        "encoded_fps": 37.643951174176784,
+        "encoded_frames": 753,
+        "encoder": "h264_nvenc",
+        "height": 1440,
+        "host_static_repeat_ms": 1000,
+        "monitor_id": 1,
+        "note": "Encode latency includes CPU copy/upload to packet availability, not display-to-display latency. Capture FPS excludes host static repeats. Wire PTS timestamps host sample consumption. Upstream losses unknown.",
+        "output": "Virtual-QUEST-2",
+        "pipewire_keepalive_ms": 0,
+        "pipewire_serial": "464",
+        "queue_dropped": 0,
+        "seconds": 20.003213704,
+        "source_timestamp_nonmonotonic": 49,
+        "static_repeat_frames": 0,
+        "target_fps": 60,
+        "timestamp_adjustments": 0,
+        "width": 2560
+      },
+      {
+        "bitrate_mbps": 1.0287273518439226,
+        "bytes": 2572117,
+        "capture_fps": 37.99558823536125,
+        "capture_frames": 760,
+        "capture_pending_at_stop": 0,
+        "codec": "h264",
+        "encode_latency_max_ms": 15.06402,
+        "encode_latency_mean_ms": 7.724917696052633,
+        "encoded_fps": 37.99558823536125,
+        "encoded_frames": 760,
+        "encoder": "h264_nvenc",
+        "height": 1440,
+        "host_static_repeat_ms": 1000,
+        "monitor_id": 2,
+        "note": "Encode latency includes CPU copy/upload to packet availability, not display-to-display latency. Capture FPS excludes host static repeats. Wire PTS timestamps host sample consumption. Upstream losses unknown.",
+        "output": "Virtual-QUEST-3",
+        "pipewire_keepalive_ms": 0,
+        "pipewire_serial": "466",
+        "queue_dropped": 0,
+        "seconds": 20.002322251,
+        "source_timestamp_nonmonotonic": 34,
+        "static_repeat_frames": 0,
+        "target_fps": 60,
+        "timestamp_adjustments": 0,
+        "width": 2560
+      }
+    ],
+    "success": true
+  },
+  "resources": {
+    "command": [
+      "./build/quest-streams",
+      "--seconds",
+      "20",
+      "--output",
+      "artifacts/final-benchmark"
+    ],
+    "returncode": 0,
+    "samples": [
+      {
+        "seconds": 1.0001632120001887,
+        "host_cpu_percent_one_core": 87.98563968775869,
+        "kwin_cpu_percent_one_core": 60.99004569265091,
+        "gpu": "33, 23, 0, 3419"
+      },
+      {
+        "seconds": 2.0240428789984435,
+        "host_cpu_percent_one_core": 76.18082721446694,
+        "kwin_cpu_percent_one_core": 92.7843408381328,
+        "gpu": "49, 30, 0, 3414"
+      },
+      {
+        "seconds": 3.0478434169999673,
+        "host_cpu_percent_one_core": 85.9542427783614,
+        "kwin_cpu_percent_one_core": 93.76826484912154,
+        "gpu": "49, 28, 0, 3412"
+      },
+      {
+        "seconds": 4.072384453000268,
+        "host_cpu_percent_one_core": 90.77235243115504,
+        "kwin_cpu_percent_one_core": 90.77235243115504,
+        "gpu": "49, 32, 0, 3411"
+      },
+      {
+        "seconds": 5.096176979997836,
+        "host_cpu_percent_one_core": 88.88519656113509,
+        "kwin_cpu_percent_one_core": 92.79223816821795,
+        "gpu": "51, 39, 0, 3361"
+      },
+      {
+        "seconds": 6.121079284999723,
+        "host_cpu_percent_one_core": 88.78895047448682,
+        "kwin_cpu_percent_one_core": 91.71605873188749,
+        "gpu": "49, 27, 0, 3360"
+      },
+      {
+        "seconds": 7.145575812999596,
+        "host_cpu_percent_one_core": 82.96758229717553,
+        "kwin_cpu_percent_one_core": 91.75238512864117,
+        "gpu": "50, 32, 0, 3358"
+      },
+      {
+        "seconds": 8.170304441999178,
+        "host_cpu_percent_one_core": 84.90052638124881,
+        "kwin_cpu_percent_one_core": 92.7074713358464,
+        "gpu": "48, 24, 0, 3358"
+      },
+      {
+        "seconds": 9.193485364998196,
+        "host_cpu_percent_one_core": 88.9383274790468,
+        "kwin_cpu_percent_one_core": 92.84770451109281,
+        "gpu": "49, 36, 0, 3359"
+      },
+      {
+        "seconds": 10.22062644199832,
+        "host_cpu_percent_one_core": 88.59542475486941,
+        "kwin_cpu_percent_one_core": 92.48972913969882,
+        "gpu": "49, 34, 0, 3359"
+      },
+      {
+        "seconds": 11.244922243000474,
+        "host_cpu_percent_one_core": 89.81780449552633,
+        "kwin_cpu_percent_one_core": 92.7466459464674,
+        "gpu": "50, 37, 0, 3360"
+      },
+      {
+        "seconds": 12.269653538998682,
+        "host_cpu_percent_one_core": 88.80376773440432,
+        "kwin_cpu_percent_one_core": 91.73136447290116,
+        "gpu": "49, 31, 0, 3359"
+      },
+      {
+        "seconds": 13.296521380998456,
+        "host_cpu_percent_one_core": 88.61899874357934,
+        "kwin_cpu_percent_one_core": 91.54050419666436,
+        "gpu": "48, 25, 0, 3359"
+      },
+      {
+        "seconds": 14.321548760999576,
+        "host_cpu_percent_one_core": 89.75370004252909,
+        "kwin_cpu_percent_one_core": 93.65603482698687,
+        "gpu": "48, 28, 0, 3360"
+      },
+      {
+        "seconds": 15.345877460000338,
+        "host_cpu_percent_one_core": 90.79116897800678,
+        "kwin_cpu_percent_one_core": 91.76741810680254,
+        "gpu": "47, 34, 0, 3358"
+      },
+      {
+        "seconds": 16.36922479200075,
+        "host_cpu_percent_one_core": 90.87823566042437,
+        "kwin_cpu_percent_one_core": 92.83260631978833,
+        "gpu": "49, 29, 0, 3359"
+      },
+      {
+        "seconds": 17.395332914999017,
+        "host_cpu_percent_one_core": 89.65916742884554,
+        "kwin_cpu_percent_one_core": 92.58283593196006,
+        "gpu": "49, 30, 0, 3360"
+      },
+      {
+        "seconds": 18.42162583100071,
+        "host_cpu_percent_one_core": 86.7198814415797,
+        "kwin_cpu_percent_one_core": 91.59178489335383,
+        "gpu": "50, 38, 0, 3359"
+      },
+      {
+        "seconds": 19.44707205499799,
+        "host_cpu_percent_one_core": 85.81629922724605,
+        "kwin_cpu_percent_one_core": 92.64259575668608,
+        "gpu": "48, 25, 0, 3363"
+      },
+      {
+        "seconds": 20.473984685999312,
+        "host_cpu_percent_one_core": 92.51030431612011,
+        "kwin_cpu_percent_one_core": 91.53651163910833,
+        "gpu": "50, 30, 0, 3177"
+      },
+      {
+        "seconds": 21.50073646099918,
+        "host_cpu_percent_one_core": 38.957809447181354,
+        "kwin_cpu_percent_one_core": 72.07194747728549,
+        "gpu": "40, 0, 0, 2457"
+      }
+    ],
+    "cpu_note": "100% means one fully used logical CPU. GPU utilization includes the desktop and test pattern.",
+    "gpu_columns": [
+      "gpu_percent",
+      "encoder_percent",
+      "decoder_percent",
+      "memory_MiB"
+    ]
+  },
+  "idle_receiver": {
+    "success": true,
+    "error": null,
+    "seconds": 6.282629055000143,
+    "streams": {
+      "2": {
+        "frames": 67,
+        "bytes": 915171,
+        "first_pts_us": 61949107,
+        "last_pts_us": 68124098,
+        "keyframes": 2
+      },
+      "1": {
+        "frames": 65,
+        "bytes": 827598,
+        "first_pts_us": 61996362,
+        "last_pts_us": 67120374,
+        "keyframes": 2
+      },
+      "0": {
+        "frames": 65,
+        "bytes": 827598,
+        "first_pts_us": 62005609,
+        "last_pts_us": 67123917,
+        "keyframes": 2
+      }
+    }
+  }
+}

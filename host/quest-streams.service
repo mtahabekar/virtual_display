@@ -1,0 +1,15 @@
+[Unit]
+Description=Quest PipeWire capture, NVENC encoding and localhost transport
+After=quest-displays.service
+BindsTo=quest-displays.service
+PartOf=quest-displays.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+ExecStart=%h/.local/libexec/quest-stream-launcher
+Restart=on-failure
+RestartPreventExitStatus=2
+RestartSec=3
+TimeoutStopSec=15

@@ -1,0 +1,18 @@
+[Unit]
+Description=Quest virtual monitors for Plasma Wayland
+After=plasma-kwin_wayland.service pipewire.service
+Wants=pipewire.service quest-streams.service
+PartOf=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+ConditionEnvironment=XDG_SESSION_TYPE=wayland
+
+[Service]
+Type=exec
+ExecStart=%h/.local/libexec/quest-displays --run
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=plasma-workspace.target

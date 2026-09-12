@@ -1,0 +1,143 @@
+{
+  "milestone": 1,
+  "passed": false,
+  "checks": {
+    "wayland_session": {
+      "ok": true,
+      "detail": {
+        "XDG_SESSION_TYPE": "wayland",
+        "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+        "WAYLAND_DISPLAY": "wayland-0"
+      }
+    },
+    "kwin_running": {
+      "ok": false,
+      "detail": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "b false",
+        "stderr": ""
+      }
+    },
+    "pipewire_connection": {
+      "ok": true,
+      "detail": "pw-dump connected"
+    },
+    "nvidia": {
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "NVIDIA GeForce RTX 5070 Laptop GPU, 580.173.02",
+        "stderr": ""
+      }
+    },
+    "kwin_virtual_output_api": {
+      "ok": false,
+      "detail": "Requires KWin plus the matching desktop registration; plain wayland-info is not authorized for this private interface"
+    },
+    "three_monitors": {
+      "ok": false,
+      "detail": [
+        "No valid KScreen configuration"
+      ]
+    },
+    "live_stream_mapping": {
+      "ok": false,
+      "detail": [
+        "Cannot validate runtime state: [Errno 2] No such file or directory: '/run/user/1000/quest-displays/state.json'"
+      ]
+    }
+  },
+  "evidence": {
+    "versions": {
+      "kernel": "7.0.0-31-generic",
+      "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+      "kwin": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "kwin 5.27.11",
+        "stderr": ""
+      },
+      "pipewire": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "pipewire\nCompiled with libpipewire 1.0.5\nLinked with libpipewire 1.0.5",
+        "stderr": ""
+      },
+      "gstreamer": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "gst-launch-1.0 version 1.24.2\nGStreamer 1.24.2\nhttps://launchpad.net/ubuntu/+source/gstreamer1.0",
+        "stderr": ""
+      },
+      "ffmpeg": {
+        "ok": false,
+        "error": "Not installed: ffmpeg"
+      },
+      "packages": {
+        "ok": false,
+        "returncode": 1,
+        "stdout": "kwin-wayland\tii \t4:5.27.11-0ubuntu3\nlibwayland-dev:amd64\tii \t1.22.0-2.1build1\nplasma-workspace\tii \t4:5.27.12-0ubuntu0.1\nqtbase5-dev:amd64\tii \t5.15.13+dfsg-1ubuntu1",
+        "stderr": "dpkg-query: no packages found matching libpipewire-0.3-dev\ndpkg-query: no packages found matching libgstreamer1.0-dev\ndpkg-query: no packages found matching libgstreamer-plugins-base1.0-dev"
+      }
+    },
+    "future_milestone_capabilities": {
+      "pipewiresrc": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "Factory Details:\n  Rank                     primary + 1 (257)\n  Long-name                PipeWire source\n  Klass                    Source/Audio/Video\n  Description              Uses PipeWire to create audio/video\n  Author                   Wim Taymans <wim.taymans@gmail.com>\n\nPlugin Details:\n  Name                     pipewire\n  Description              Uses PipeWire to handle media streams\n  Filename                 /usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstpipewire.so\n  Version                  1.0.5\n  License                  MIT/X11\n  Source module            pipewire\n  Binary package           pipewire\n  Origin URL               pipewire.org\n\nGObject\n +----GInitiallyUnowned\n       +----GstObject\n             +----GstElement\n                   +----GstBaseSrc\n                         +----GstPushSrc\n                               +----GstPipeWireSrc\n\nPad Templates:\n  SRC template: 'src'\n    Availability: Always\n    Capabilities:\n      ANY\n\nClocking Interaction:\n  element provides a clock\nElement has no URI handling capabilities.\n\nPads:\n  SRC: 'src'\n    Pad Template: 'src'\n\nElement Properties:\n\n  always-copy         : Always copy the buffer and data\n                        flags: readable, writable\n                        Boolean. Default: false\n  \n  autoconnect         : Attempt to find a peer to connect to\n                        flags: readable, writable\n                        Boolean. Default: true\n  \n  automatic-eos       : Automatically EOS when the segment is done\n                        flags: readable, writable\n                        Boolean. Default: true\n  \n  blocksize           : Size in bytes to read per buffer (-1 = default)\n                        flags: readable, writable\n                        Unsigned Integer. Range: 0 - 4294967295 Default: 4096 \n  \n  client-name         : The client name to use (NULL = default)\n                        flags: readable, writable\n                        String. Default: \"gst-inspect-1.0\"\n  \n  client-properties   : list of PipeWire client properties\n                        flags: readable, writable\n                        Boxed pointer of type \"GstStructure\"\n  \n  do-timestamp        : Apply current stream time to buffers\n                        flags: readable, writable\n                        Boolean. Default: false\n  \n  fd                  : The fd to connect with\n                        flags: readable, writable\n                        Integer. Range: -1 - 2147483647 Default: -1 \n  \n  keepalive-time      : Periodically send last buffer (in milliseconds, 0 = disabled)\n                        flags: readable, writable\n                        Integer. Range: 0 - 2147483647 Default: 0 \n  \n  max-buffers         : Maximum number of buffers to negotiate with PipeWire\n                        flags: readable, writable\n                        Integer. Range: 1 - 2147483647 Default: 2147483647 \n  \n  min-buffers         : Minimum number of buffers to negotiate with PipeWire\n                        flags: readable, writable\n                        Integer. Range: 1 - 2147483647 Default: 8 \n  \n  name                : The name of the object\n                        flags: readable, writable\n                        String. Default: \"pipewiresrc0\"\n  \n  num-buffers         : Number of buffers to output before sending EOS (-1 = unlimited)\n                        flags: readable, writable\n                        Integer. Range: -1 - 2147483647 Default: -1 \n  \n  parent              : The parent of the object\n                        flags: readable, writable\n                        Object of type \"GstObject\"\n  \n  path                : The source path to connect to (NULL = default)\n                        flags: readable, writable, deprecated\n                        String. Default: null\n  \n  resend-last         : Resend last buffer on EOS\n                        flags: readable, writable\n                        Boolean. Default: false\n  \n  stream-properties   : list of PipeWire stream properties\n                        flags: readable, writable\n                        Boxed pointer of type \"GstStructure\"\n  \n  target-object       : The source name/serial to connect to (NULL = default)\n                        flags: readable, writable\n                        String. Default: null\n  \n  typefind            : Run typefind before negotiating (deprecated, non-functional)\n                        flags: readable, writable, deprecated\n                        Boolean. Default: false",
+        "stderr": ""
+      },
+      "nvh264enc": {
+        "ok": false,
+        "returncode": 255,
+        "stdout": "",
+        "stderr": "No such element or plugin 'nvh264enc'"
+      },
+      "ffmpeg_nvenc": {
+        "ok": false,
+        "error": "Not installed: ffmpeg"
+      }
+    },
+    "wayland_probe": {
+      "kwin_running": false,
+      "monitors": [],
+      "outputs": [
+        {
+          "description": "HP Inc. 23\"",
+          "height": 1080,
+          "name": "HDMI-1",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 5,
+          "width": 1920,
+          "x": 2048,
+          "y": 0
+        },
+        {
+          "description": "Built-in display",
+          "height": 1600,
+          "name": "eDP-1",
+          "refresh_millihz": 239999,
+          "scale": 2,
+          "wayland_global": 6,
+          "width": 2560,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "pid": 29441,
+      "ready": false,
+      "schema_version": 1,
+      "screencast_advertised_version": 0,
+      "screencast_bound_version": 0,
+      "session_type": "wayland",
+      "wayland_display": "wayland-0"
+    },
+    "kscreen": {
+      "ok": false,
+      "error": "Skipped: KWin not running; fallback QScreen output would be misleading"
+    }
+  }
+}

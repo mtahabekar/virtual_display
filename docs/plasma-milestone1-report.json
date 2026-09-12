@@ -1,0 +1,702 @@
+{
+  "milestone": 1,
+  "passed": true,
+  "checks": {
+    "wayland_session": {
+      "ok": true,
+      "detail": {
+        "XDG_SESSION_TYPE": "wayland",
+        "XDG_CURRENT_DESKTOP": "KDE",
+        "WAYLAND_DISPLAY": "wayland-0"
+      }
+    },
+    "kwin_running": {
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "b true",
+        "stderr": ""
+      }
+    },
+    "pipewire_connection": {
+      "ok": true,
+      "detail": "pw-dump connected"
+    },
+    "nvidia": {
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "NVIDIA GeForce RTX 5070 Laptop GPU, 580.173.02",
+        "stderr": ""
+      }
+    },
+    "kwin_virtual_output_api": {
+      "ok": true,
+      "detail": "Requires KWin plus the matching desktop registration; plain wayland-info is not authorized for this private interface"
+    },
+    "three_monitors": {
+      "ok": true,
+      "detail": [
+        {
+          "name": "Virtual-QUEST-1",
+          "kscreen_id": 3,
+          "current_mode": {
+            "id": "0",
+            "name": "2560x1440@60",
+            "refreshRate": 60,
+            "size": {
+              "height": 1440,
+              "width": 2560
+            }
+          },
+          "position": {
+            "x": 3627,
+            "y": 0
+          },
+          "scale": 1
+        },
+        {
+          "name": "Virtual-QUEST-2",
+          "kscreen_id": 4,
+          "current_mode": {
+            "id": "0",
+            "name": "2560x1440@60",
+            "refreshRate": 60,
+            "size": {
+              "height": 1440,
+              "width": 2560
+            }
+          },
+          "position": {
+            "x": 6187,
+            "y": 0
+          },
+          "scale": 1
+        },
+        {
+          "name": "Virtual-QUEST-3",
+          "kscreen_id": 5,
+          "current_mode": {
+            "id": "0",
+            "name": "2560x1440@60",
+            "refreshRate": 60,
+            "size": {
+              "height": 1440,
+              "width": 2560
+            }
+          },
+          "position": {
+            "x": 8747,
+            "y": 0
+          },
+          "scale": 1
+        }
+      ]
+    },
+    "live_stream_mapping": {
+      "ok": true,
+      "detail": "Three live output-to-node mappings verified"
+    }
+  },
+  "evidence": {
+    "versions": {
+      "kernel": "7.0.0-31-generic",
+      "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+      "kwin": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "kwin 5.27.11",
+        "stderr": ""
+      },
+      "pipewire": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "pipewire\nCompiled with libpipewire 1.0.5\nLinked with libpipewire 1.0.5",
+        "stderr": ""
+      },
+      "gstreamer": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "gst-launch-1.0 version 1.24.2\nGStreamer 1.24.2\nhttps://launchpad.net/ubuntu/+source/gstreamer1.0",
+        "stderr": ""
+      },
+      "ffmpeg": {
+        "ok": false,
+        "error": "Not installed: ffmpeg"
+      },
+      "packages": {
+        "ok": false,
+        "returncode": 1,
+        "stdout": "kwin-wayland\tii \t4:5.27.11-0ubuntu3\nlibwayland-dev:amd64\tii \t1.22.0-2.1build1\nplasma-workspace\tii \t4:5.27.12-0ubuntu0.1\nqtbase5-dev:amd64\tii \t5.15.13+dfsg-1ubuntu1",
+        "stderr": "dpkg-query: no packages found matching libpipewire-0.3-dev\ndpkg-query: no packages found matching libgstreamer1.0-dev\ndpkg-query: no packages found matching libgstreamer-plugins-base1.0-dev"
+      }
+    },
+    "future_milestone_capabilities": {
+      "pipewiresrc": {
+        "ok": true,
+        "returncode": 0,
+        "stdout": "Factory Details:\n  Rank                     primary + 1 (257)\n  Long-name                PipeWire source\n  Klass                    Source/Audio/Video\n  Description              Uses PipeWire to create audio/video\n  Author                   Wim Taymans <wim.taymans@gmail.com>\n\nPlugin Details:\n  Name                     pipewire\n  Description              Uses PipeWire to handle media streams\n  Filename                 /usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstpipewire.so\n  Version                  1.0.5\n  License                  MIT/X11\n  Source module            pipewire\n  Binary package           pipewire\n  Origin URL               pipewire.org\n\nGObject\n +----GInitiallyUnowned\n       +----GstObject\n             +----GstElement\n                   +----GstBaseSrc\n                         +----GstPushSrc\n                               +----GstPipeWireSrc\n\nPad Templates:\n  SRC template: 'src'\n    Availability: Always\n    Capabilities:\n      ANY\n\nClocking Interaction:\n  element provides a clock\nElement has no URI handling capabilities.\n\nPads:\n  SRC: 'src'\n    Pad Template: 'src'\n\nElement Properties:\n\n  always-copy         : Always copy the buffer and data\n                        flags: readable, writable\n                        Boolean. Default: false\n  \n  autoconnect         : Attempt to find a peer to connect to\n                        flags: readable, writable\n                        Boolean. Default: true\n  \n  automatic-eos       : Automatically EOS when the segment is done\n                        flags: readable, writable\n                        Boolean. Default: true\n  \n  blocksize           : Size in bytes to read per buffer (-1 = default)\n                        flags: readable, writable\n                        Unsigned Integer. Range: 0 - 4294967295 Default: 4096 \n  \n  client-name         : The client name to use (NULL = default)\n                        flags: readable, writable\n                        String. Default: \"gst-inspect-1.0\"\n  \n  client-properties   : list of PipeWire client properties\n                        flags: readable, writable\n                        Boxed pointer of type \"GstStructure\"\n  \n  do-timestamp        : Apply current stream time to buffers\n                        flags: readable, writable\n                        Boolean. Default: false\n  \n  fd                  : The fd to connect with\n                        flags: readable, writable\n                        Integer. Range: -1 - 2147483647 Default: -1 \n  \n  keepalive-time      : Periodically send last buffer (in milliseconds, 0 = disabled)\n                        flags: readable, writable\n                        Integer. Range: 0 - 2147483647 Default: 0 \n  \n  max-buffers         : Maximum number of buffers to negotiate with PipeWire\n                        flags: readable, writable\n                        Integer. Range: 1 - 2147483647 Default: 2147483647 \n  \n  min-buffers         : Minimum number of buffers to negotiate with PipeWire\n                        flags: readable, writable\n                        Integer. Range: 1 - 2147483647 Default: 8 \n  \n  name                : The name of the object\n                        flags: readable, writable\n                        String. Default: \"pipewiresrc0\"\n  \n  num-buffers         : Number of buffers to output before sending EOS (-1 = unlimited)\n                        flags: readable, writable\n                        Integer. Range: -1 - 2147483647 Default: -1 \n  \n  parent              : The parent of the object\n                        flags: readable, writable\n                        Object of type \"GstObject\"\n  \n  path                : The source path to connect to (NULL = default)\n                        flags: readable, writable, deprecated\n                        String. Default: null\n  \n  resend-last         : Resend last buffer on EOS\n                        flags: readable, writable\n                        Boolean. Default: false\n  \n  stream-properties   : list of PipeWire stream properties\n                        flags: readable, writable\n                        Boxed pointer of type \"GstStructure\"\n  \n  target-object       : The source name/serial to connect to (NULL = default)\n                        flags: readable, writable\n                        String. Default: null\n  \n  typefind            : Run typefind before negotiating (deprecated, non-functional)\n                        flags: readable, writable, deprecated\n                        Boolean. Default: false",
+        "stderr": ""
+      },
+      "nvh264enc": {
+        "ok": false,
+        "returncode": 255,
+        "stdout": "",
+        "stderr": "No such element or plugin 'nvh264enc'"
+      },
+      "ffmpeg_nvenc": {
+        "ok": false,
+        "error": "Not installed: ffmpeg"
+      }
+    },
+    "wayland_probe": {
+      "kwin_running": true,
+      "monitors": [],
+      "outputs": [
+        {
+          "description": "HP Inc. HP E233/CNC7431ZJ1",
+          "height": 1080,
+          "name": "HDMI-A-1",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 49,
+          "width": 1920,
+          "x": 1707,
+          "y": 0
+        },
+        {
+          "description": "Samsung Display Corp. eDP-1-ATNA60HU01-0",
+          "height": 1600,
+          "name": "eDP-1",
+          "refresh_millihz": 240000,
+          "scale": 2,
+          "wayland_global": 50,
+          "width": 2560,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "description": " ",
+          "height": 1440,
+          "name": "Virtual-QUEST-1",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 67,
+          "width": 2560,
+          "x": 3627,
+          "y": 0
+        },
+        {
+          "description": " ",
+          "height": 1440,
+          "name": "Virtual-QUEST-2",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 69,
+          "width": 2560,
+          "x": 6187,
+          "y": 0
+        },
+        {
+          "description": " ",
+          "height": 1440,
+          "name": "Virtual-QUEST-3",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 71,
+          "width": 2560,
+          "x": 8747,
+          "y": 0
+        }
+      ],
+      "pid": 49521,
+      "ready": false,
+      "schema_version": 1,
+      "screencast_advertised_version": 3,
+      "screencast_bound_version": 3,
+      "session_type": "wayland",
+      "wayland_display": "wayland-0"
+    },
+    "kscreen": {
+      "features": 247,
+      "outputs": [
+        {
+          "clones": [],
+          "connected": true,
+          "currentModeId": "0",
+          "enabled": true,
+          "followPreferredMode": false,
+          "icon": "",
+          "id": 1,
+          "modes": [
+            {
+              "id": "0",
+              "name": "1920x1080@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 1080,
+                "width": 1920
+              }
+            },
+            {
+              "id": "1",
+              "name": "1920x1080@60",
+              "refreshRate": 59.93899917602539,
+              "size": {
+                "height": 1080,
+                "width": 1920
+              }
+            },
+            {
+              "id": "10",
+              "name": "1280x720@50",
+              "refreshRate": 50,
+              "size": {
+                "height": 720,
+                "width": 1280
+              }
+            },
+            {
+              "id": "11",
+              "name": "1024x768@60",
+              "refreshRate": 60.00400161743164,
+              "size": {
+                "height": 768,
+                "width": 1024
+              }
+            },
+            {
+              "id": "12",
+              "name": "800x600@60",
+              "refreshRate": 60.31700134277344,
+              "size": {
+                "height": 600,
+                "width": 800
+              }
+            },
+            {
+              "id": "13",
+              "name": "720x576@50",
+              "refreshRate": 50,
+              "size": {
+                "height": 576,
+                "width": 720
+              }
+            },
+            {
+              "id": "14",
+              "name": "720x480@60",
+              "refreshRate": 59.939998626708984,
+              "size": {
+                "height": 480,
+                "width": 720
+              }
+            },
+            {
+              "id": "15",
+              "name": "640x480@60",
+              "refreshRate": 59.939998626708984,
+              "size": {
+                "height": 480,
+                "width": 640
+              }
+            },
+            {
+              "id": "16",
+              "name": "640x480@60",
+              "refreshRate": 59.92900085449219,
+              "size": {
+                "height": 480,
+                "width": 640
+              }
+            },
+            {
+              "id": "2",
+              "name": "1920x1080@50",
+              "refreshRate": 50,
+              "size": {
+                "height": 1080,
+                "width": 1920
+              }
+            },
+            {
+              "id": "3",
+              "name": "1680x1050@60",
+              "refreshRate": 59.95399856567383,
+              "size": {
+                "height": 1050,
+                "width": 1680
+              }
+            },
+            {
+              "id": "4",
+              "name": "1600x900@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 900,
+                "width": 1600
+              }
+            },
+            {
+              "id": "5",
+              "name": "1280x1024@60",
+              "refreshRate": 60.02000045776367,
+              "size": {
+                "height": 1024,
+                "width": 1280
+              }
+            },
+            {
+              "id": "6",
+              "name": "1440x900@60",
+              "refreshRate": 59.887001037597656,
+              "size": {
+                "height": 900,
+                "width": 1440
+              }
+            },
+            {
+              "id": "7",
+              "name": "1280x800@60",
+              "refreshRate": 59.810001373291016,
+              "size": {
+                "height": 800,
+                "width": 1280
+              }
+            },
+            {
+              "id": "8",
+              "name": "1280x720@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 720,
+                "width": 1280
+              }
+            },
+            {
+              "id": "9",
+              "name": "1280x720@60",
+              "refreshRate": 59.94300079345703,
+              "size": {
+                "height": 720,
+                "width": 1280
+              }
+            }
+          ],
+          "name": "HDMI-A-1",
+          "pos": {
+            "x": 1707,
+            "y": 0
+          },
+          "preferredModes": [
+            "0"
+          ],
+          "priority": 2,
+          "replicationSource": 0,
+          "rotation": 1,
+          "scale": 1,
+          "size": {
+            "height": 1080,
+            "width": 1920
+          },
+          "sizeMM": {
+            "height": 290,
+            "width": 510
+          },
+          "type": 6
+        },
+        {
+          "clones": [],
+          "connected": true,
+          "currentModeId": "0",
+          "enabled": true,
+          "followPreferredMode": false,
+          "icon": "",
+          "id": 2,
+          "modes": [
+            {
+              "id": "0",
+              "name": "2560x1600@240",
+              "refreshRate": 240,
+              "size": {
+                "height": 1600,
+                "width": 2560
+              }
+            },
+            {
+              "id": "1",
+              "name": "2560x1600@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 1600,
+                "width": 2560
+              }
+            }
+          ],
+          "name": "eDP-1",
+          "pos": {
+            "x": 0,
+            "y": 0
+          },
+          "preferredModes": [],
+          "priority": 1,
+          "replicationSource": 0,
+          "rotation": 1,
+          "scale": 1.5,
+          "size": {
+            "height": 1600,
+            "width": 2560
+          },
+          "sizeMM": {
+            "height": 220,
+            "width": 340
+          },
+          "type": 7,
+          "vrrPolicy": 0
+        },
+        {
+          "clones": [],
+          "connected": true,
+          "currentModeId": "0",
+          "enabled": true,
+          "followPreferredMode": false,
+          "icon": "",
+          "id": 3,
+          "modes": [
+            {
+              "id": "0",
+              "name": "2560x1440@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 1440,
+                "width": 2560
+              }
+            }
+          ],
+          "name": "Virtual-QUEST-1",
+          "pos": {
+            "x": 3627,
+            "y": 0
+          },
+          "preferredModes": [
+            "0"
+          ],
+          "priority": 3,
+          "replicationSource": 0,
+          "rotation": 1,
+          "scale": 1,
+          "size": {
+            "height": 1440,
+            "width": 2560
+          },
+          "sizeMM": {
+            "height": 1440,
+            "width": 2560
+          },
+          "type": 0
+        },
+        {
+          "clones": [],
+          "connected": true,
+          "currentModeId": "0",
+          "enabled": true,
+          "followPreferredMode": false,
+          "icon": "",
+          "id": 4,
+          "modes": [
+            {
+              "id": "0",
+              "name": "2560x1440@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 1440,
+                "width": 2560
+              }
+            }
+          ],
+          "name": "Virtual-QUEST-2",
+          "pos": {
+            "x": 6187,
+            "y": 0
+          },
+          "preferredModes": [
+            "0"
+          ],
+          "priority": 4,
+          "replicationSource": 0,
+          "rotation": 1,
+          "scale": 1,
+          "size": {
+            "height": 1440,
+            "width": 2560
+          },
+          "sizeMM": {
+            "height": 1440,
+            "width": 2560
+          },
+          "type": 0
+        },
+        {
+          "clones": [],
+          "connected": true,
+          "currentModeId": "0",
+          "enabled": true,
+          "followPreferredMode": false,
+          "icon": "",
+          "id": 5,
+          "modes": [
+            {
+              "id": "0",
+              "name": "2560x1440@60",
+              "refreshRate": 60,
+              "size": {
+                "height": 1440,
+                "width": 2560
+              }
+            }
+          ],
+          "name": "Virtual-QUEST-3",
+          "pos": {
+            "x": 8747,
+            "y": 0
+          },
+          "preferredModes": [
+            "0"
+          ],
+          "priority": 5,
+          "replicationSource": 0,
+          "rotation": 1,
+          "scale": 1,
+          "size": {
+            "height": 1440,
+            "width": 2560
+          },
+          "sizeMM": {
+            "height": 1440,
+            "width": 2560
+          },
+          "type": 0
+        }
+      ],
+      "screen": {
+        "currentSize": {
+          "height": 1440,
+          "width": 11307
+        },
+        "id": 0,
+        "maxActiveOutputsCount": 5,
+        "maxSize": {
+          "height": 64000,
+          "width": 64000
+        },
+        "minSize": {
+          "height": 0,
+          "width": 0
+        }
+      },
+      "tabletModeAvailable": false,
+      "tabletModeEngaged": false
+    },
+    "host_state": {
+      "kwin_running": true,
+      "monitors": [
+        {
+          "height": 1440,
+          "id": 0,
+          "name": "QUEST-1",
+          "output_name": "Virtual-QUEST-1",
+          "pipewire_node": 67,
+          "target_fps": 60,
+          "wayland_global": 67,
+          "width": 2560
+        },
+        {
+          "height": 1440,
+          "id": 1,
+          "name": "QUEST-2",
+          "output_name": "Virtual-QUEST-2",
+          "pipewire_node": 73,
+          "target_fps": 60,
+          "wayland_global": 69,
+          "width": 2560
+        },
+        {
+          "height": 1440,
+          "id": 2,
+          "name": "QUEST-3",
+          "output_name": "Virtual-QUEST-3",
+          "pipewire_node": 68,
+          "target_fps": 60,
+          "wayland_global": 71,
+          "width": 2560
+        }
+      ],
+      "outputs": [
+        {
+          "description": "HP Inc. HP E233/CNC7431ZJ1",
+          "height": 1080,
+          "name": "HDMI-A-1",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 49,
+          "width": 1920,
+          "x": 1707,
+          "y": 0
+        },
+        {
+          "description": "Samsung Display Corp. eDP-1-ATNA60HU01-0",
+          "height": 1600,
+          "name": "eDP-1",
+          "refresh_millihz": 240000,
+          "scale": 2,
+          "wayland_global": 50,
+          "width": 2560,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "description": " ",
+          "height": 1440,
+          "name": "Virtual-QUEST-1",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 67,
+          "width": 2560,
+          "x": 3627,
+          "y": 0
+        },
+        {
+          "description": " ",
+          "height": 1440,
+          "name": "Virtual-QUEST-2",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 69,
+          "width": 2560,
+          "x": 6187,
+          "y": 0
+        },
+        {
+          "description": " ",
+          "height": 1440,
+          "name": "Virtual-QUEST-3",
+          "refresh_millihz": 60000,
+          "scale": 1,
+          "wayland_global": 71,
+          "width": 2560,
+          "x": 8747,
+          "y": 0
+        }
+      ],
+      "pid": 49002,
+      "ready": true,
+      "schema_version": 1,
+      "screencast_advertised_version": 3,
+      "screencast_bound_version": 3,
+      "session_type": "wayland",
+      "wayland_display": "wayland-0"
+    }
+  }
+}
