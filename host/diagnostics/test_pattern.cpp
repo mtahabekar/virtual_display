@@ -1,3 +1,4 @@
+#include "../monitors.h"
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QPainter>
@@ -50,11 +51,11 @@ private:
 int main(int argc, char **argv) {
     QApplication app(argc, argv);
     const auto args = app.arguments();
-    if (args.size() != 3) { std::cerr << "Usage: quest-test-pattern 0|1|2|all SECONDS\n"; return 2; }
+    if (args.size() != 3) { std::cerr << "Usage: quest-test-pattern MONITOR_ID|all SECONDS\n"; return 2; }
     bool ok; const int seconds = args[2].toInt(&ok);
     if (!ok || seconds < 1 || seconds > 3600) return 2;
     int count = 0;
-    for (int id = 0; id < 3; ++id) {
+    for (int id = 0; id < quest::MonitorCount; ++id) {
         if (args[1] != "all" && args[1] != QString::number(id)) continue;
         for (auto *screen : app.screens()) {
             if (screen->name() != QString("Virtual-QUEST-%1").arg(id + 1) && screen->name() != QString("QUEST-%1").arg(id + 1)) continue;

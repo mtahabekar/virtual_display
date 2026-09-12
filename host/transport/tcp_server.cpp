@@ -12,7 +12,7 @@ namespace quest {
 static constexpr size_t MaxPayload = 8 * 1024 * 1024;
 std::vector<uint8_t> framePacket(const EncodedPacket &p)
 {
-    if (p.monitorId < 0 || p.monitorId > 2 || p.ptsUs < 0 || p.bytes.empty() || p.bytes.size() > MaxPayload)
+    if (p.monitorId < 0 || p.monitorId >= MonitorCount || p.ptsUs < 0 || p.bytes.empty() || p.bytes.size() > MaxPayload)
         throw std::runtime_error("Invalid encoded packet");
     std::vector<uint8_t> result(32 + p.bytes.size());
     const uint8_t prefix[] = {'Q', 'S', 'T', 'V', 1, 1, uint8_t(p.monitorId), 1};

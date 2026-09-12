@@ -9,6 +9,7 @@ import time
 
 HEADER = struct.Struct("!4sBBBBHHHHQII")
 MAX_PAYLOAD = 8 * 1024 * 1024
+STREAM_IDS = {0, 1}  # keep in sync with host/monitors.h
 
 
 def read_exact(sock, size):
@@ -25,7 +26,7 @@ def parse_header(data):
     magic, version, kind, stream, codec, width, height, fps_num, fps_den, pts, size, flags = HEADER.unpack(data)
     if (magic, version, kind, codec) != (b"QSTV", 1, 1, 1):
         raise ValueError("Unsupported protocol header")
-    if stream not in (0, 1, 2) or (width, height, fps_num, fps_den) != (2560, 1440, 60, 1):
+    if stream not in STREAM_IDS or (width, height, fps_num, fps_den) != (2560, 1440, 60, 1):
         raise ValueError("Invalid stream configuration")
     if size < 1 or size > MAX_PAYLOAD or flags & ~1:
         raise ValueError("Invalid payload length or flags")
@@ -75,8 +76,8 @@ def main():
     finally:
         for file in files.values():
             file.close()
-    if set(streams) != {0, 1, 2}:
-        error = error or "Did not receive all three streams"
+    if set(streams) != STREAM_IDS:
+        error = error or "Did not receive every stream"
     result = {"success": error is None, "error": error, "seconds": time.monotonic() - started, "streams": streams}
     (args.output / "receiver.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))

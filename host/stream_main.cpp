@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLockFile>
+#include <QProcess>
 #include <QSaveFile>
 #include <atomic>
 #include <chrono>
@@ -27,26 +28,27 @@ void log(const QString &line) { std::lock_guard<std::mutex> lock(logs); std::cer
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    gst_init(nullptr, nullptr);
     av_log_set_level(AV_LOG_WARNING);
     QCommandLineParser parser;
     parser.setApplicationDescription("Independent KWin/PipeWire to NVENC H.264 streams");
     parser.addHelpOption();
-    parser.addOption({"monitor", "Monitor ID 0/1/2, or all", "id", "all"});
+    parser.addOption({"monitor", "Monitor ID (0-based), or all", "id", "all"});
     parser.addOption({"seconds", "Duration in seconds, 0 runs until stopped", "seconds", "0"});
     parser.addOption({"output", "Directory for independent H.264 files and statistics", "directory", "artifacts/streams"});
     parser.addOption({"bitrate", "Target Mbps per monitor (VBR, capped at this rate)", "mbps", "24"});
     parser.addOption({"listen", "TCP port on 127.0.0.1; 0 disables transport", "port", "0"});
     parser.addOption({"no-record", "Do not write video files; keep statistics and TCP output only"});
+    parser.addOption({"laptop-off-when-connected", "Switch physical displays off while a headset client is connected"});
     parser.process(app);
     std::signal(SIGINT, stop); std::signal(SIGTERM, stop);
     try {
-        bool secOk, rateOk, portOk;
+        bool secOk, rateOk, portOk, idOk = true;
         const int seconds = parser.value("seconds").toInt(&secOk), rate = parser.value("bitrate").toInt(&rateOk);
         const auto selection = parser.value("monitor");
         const int port = parser.value("listen").toInt(&portOk);
+        if (selection != "all") { const int id = selection.toInt(&idOk); idOk = idOk && id >= 0 && id < quest::MonitorCount; }
         if (!secOk || seconds < 0 || !rateOk || rate < 1 || rate > 150 || !portOk || port < 0 || port > 65535 ||
-            (selection != "all" && selection != "0" && selection != "1" && selection != "2"))
+            !idOk)
             throw std::runtime_error("Invalid duration, bitrate or monitor selection");
         QDir directory(parser.value("output"));
         if (!QDir().mkpath(directory.path())) throw std::runtime_error("Cannot create output directory");
@@ -62,11 +64,14 @@ int main(int argc, char **argv)
         const bool record = !parser.isSet("no-record");
         std::atomic<bool> failed{false};
         std::vector<std::thread> workers;
-        std::array<QJsonObject, 3> reports;
+        std::atomic<int> activeWorkers{0};
+        std::array<QJsonObject, quest::MonitorCount> reports;
         const auto epoch = Clock::now();
         for (const auto &m : monitors) {
             if (selection != "all" && selection != QString::number(m.id)) continue;
+            ++activeWorkers;
             workers.emplace_back([&, m] {
+                struct Done { std::atomic<int> &count; ~Done() { --count; } } done{activeWorkers};
                 try {
                     QFile file(directory.filePath(QString("quest-%1.h264").arg(m.id)));
                     if (record && !file.open(QIODevice::WriteOnly)) throw std::runtime_error("Cannot open H.264 output");
@@ -76,7 +81,7 @@ int main(int argc, char **argv)
                         if (transport) transport->publish(std::move(packet));
                     });
                     log(QString("[encoder:%1] NVENC H264 initialized, 2560x1440, target 60 FPS, %2 Mbps").arg(m.id).arg(rate));
-                    quest::CaptureSession capture(m, 0);
+                    quest::CaptureSession capture(m);
                     log(QString("[capture:%1] node=%2 serial=%3").arg(m.id).arg(m.node).arg(m.serial));
                     auto started = Clock::now(), lastLog = started;
                     uint64_t previousCapture = 0, previousEncoded = 0, previousBytes = 0;
@@ -138,6 +143,27 @@ int main(int argc, char **argv)
                     log(QString("[stream:%1] ERROR %2").arg(m.id).arg(e.what()));
                 }
             });
+        }
+        if (transport && parser.isSet("laptop-off-when-connected")) {
+            // Headset mode: after a client has stayed connected briefly, physical displays go
+            // off; after it has been gone for a few seconds, or when streaming ends, they return.
+            const auto helper = QCoreApplication::applicationDirPath() + "/quest-laptop-display";
+            bool laptopOff = false, lastConnected = false;
+            auto changed = Clock::now();
+            auto setLaptop = [&](bool off) {
+                const int code = QProcess::execute(helper, {off ? "off" : "on"});
+                log(QString("[headset-mode] laptop display %1 (helper exit %2)").arg(off ? "off" : "on").arg(code));
+                laptopOff = off;
+            };
+            while (activeWorkers > 0) {
+                const bool connected = transport->clientConnected();
+                if (connected != lastConnected) { lastConnected = connected; changed = Clock::now(); }
+                const auto stable = Clock::now() - changed;
+                if (connected && !laptopOff && stable > std::chrono::milliseconds(1500)) setLaptop(true);
+                if (!connected && laptopOff && stable > std::chrono::seconds(4)) setLaptop(false);
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            }
+            if (laptopOff) setLaptop(false);
         }
         for (auto &worker : workers) worker.join();
         QJsonArray results;

@@ -10,7 +10,6 @@
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    gst_init(nullptr, nullptr);
     const auto args = app.arguments();
     if (args.size() != 4) { std::cerr << "Usage: quest-capture-test MONITOR_ID SECONDS OUTPUT_DIRECTORY\n"; return 2; }
     try {

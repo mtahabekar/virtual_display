@@ -1,5 +1,6 @@
 // Milestone 1: KWin 5.27 native virtual-output lifetime and discovery.
 #include "screencast-client.h"
+#include "../monitors.h"
 #include <wayland-client.h>
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -97,7 +98,7 @@ class VirtualDisplayManager {
 public:
     VirtualDisplayManager()
     {
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < quest::MonitorCount; ++i) {
             streams[i].id = i;
             streams[i].name = "QUEST-" + std::to_string(i + 1);
         }
@@ -136,10 +137,13 @@ public:
         };
         // Always use the v2 request (supported by the installed 5.27 server).
         // Scale 1 means logical and physical dimensions are both 2560x1440.
+        // Virtual outputs have no hardware cursor plane, so KWin already renders the
+        // pointer into the output. EMBEDDED would paint a second copy using the scale
+        // and position from creation time, which drifts once KScreen applies a scale.
         for (auto &s : streams) {
             s.proxy = zkde_screencast_unstable_v1_stream_virtual_output(
                 manager, s.name.c_str(), Width, Height, wl_fixed_from_int(1),
-                ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED);
+                ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_HIDDEN);
             if (!s.proxy) throw std::runtime_error("Could not allocate screencast stream");
             zkde_screencast_stream_unstable_v1_add_listener(s.proxy, &listener, &s);
         }
@@ -157,7 +161,7 @@ public:
                 return;
             }
         }
-        throw std::runtime_error(stopping ? "Startup interrupted" : "Timed out waiting for three named 2560x1440 outputs and PipeWire nodes; rolling back");
+        throw std::runtime_error(stopping ? "Startup interrupted" : "Timed out waiting for the named 2560x1440 Quest outputs and PipeWire nodes; rolling back");
     }
     void checkStreamErrors() const
     {
@@ -168,7 +172,8 @@ public:
     {
         for (const auto &s : streams) {
             const auto *o = findOutput(s.name);
-            if (!s.ready || !o || !o->done || o->width != Width || o->height != Height || o->scale != 1
+            // Any desktop scale is accepted: KWin streams the full 2560x1440 mode regardless.
+            if (!s.ready || !o || !o->done || o->width != Width || o->height != Height
                 || o->refresh < 59000 || o->refresh > 61000)
                 return false;
         }
@@ -232,7 +237,7 @@ private:
     zkde_screencast_unstable_v1 *manager = nullptr;
     uint32_t managerGlobal = 0, advertisedVersion = 0, boundVersion = 0;
     std::map<uint32_t, std::unique_ptr<Output>> outputs;
-    std::array<Stream, 3> streams;
+    std::array<Stream, quest::MonitorCount> streams;
     [[noreturn]] void failConnection() const { throw std::runtime_error("Wayland connection lost or protocol error"); }
     const Output *findOutput(const std::string &name) const
     {
@@ -322,7 +327,7 @@ int main(int argc, char **argv)
     if (args.size() == 2 && args[1] == "--help") {
         std::cout << "Usage: quest-displays --probe | --run\n"
                      "--probe  Read Wayland outputs and accessible KWin protocol as JSON; creates nothing.\n"
-                     "--run    Own exactly three 2560x1440 KWin virtual outputs until Ctrl-C.\n"
+                     "--run    Own the fixed 2560x1440 QUEST-N KWin virtual outputs until Ctrl-C.\n"
                      "State: $XDG_RUNTIME_DIR/quest-displays/state.json\n";
         return 0;
     }
@@ -360,13 +365,13 @@ int main(int argc, char **argv)
         QByteArray last;
         while (!stopping) {
             displays.checkStreamErrors();
-            if (!displays.complete()) throw std::runtime_error("An owned output disappeared or changed dimensions/scale; stopping all three");
+            if (!displays.complete()) throw std::runtime_error("An owned output disappeared or changed its mode; stopping all outputs");
             const auto state = QJsonDocument(displays.snapshot(true)).toJson();
             if (state != last) { saveState(statePath, state); last = state; }
             displays.pump(250);
         }
         QFile::remove(statePath);
-        std::cerr << "[virtual-display] Stopping; releasing the three owned outputs\n";
+        std::cerr << "[virtual-display] Stopping; releasing the owned outputs\n";
         return 0;
     } catch (const std::exception &error) {
         if (!statePath.isEmpty()) QFile::remove(statePath);

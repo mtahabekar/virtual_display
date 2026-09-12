@@ -14,7 +14,8 @@ for directory in (libexec, units, config):
     directory.mkdir(parents=True, exist_ok=True)
 subprocess.run([sys.executable, str(root / "tools/register-desktop.py"), "--native-user-paths"], check=True)
 for source, name in [(root / "build/quest-streams", "quest-streams"),
-                     (root / "tools/stream-launcher.py", "quest-stream-launcher")]:
+                     (root / "tools/stream-launcher.py", "quest-stream-launcher"),
+                     (root / "tools/laptop-display.py", "quest-laptop-display")]:
     with tempfile.NamedTemporaryFile(dir=libexec, delete=False) as file:
         temporary = Path(file.name)
     try:

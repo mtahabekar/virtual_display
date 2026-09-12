@@ -41,16 +41,16 @@ set_tests_properties(protocol-lifetime PROPERTIES TIMEOUT 15)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0)
 option(QUEST_BUILD_MEDIA "Build capture, NVENC and transport" ON)
 if(QUEST_BUILD_MEDIA)
-    find_path(GST_INCLUDE gst/gst.h PATHS /usr/include/gstreamer-1.0
-        ${CMAKE_SOURCE_DIR}/.deps/root/usr/include/gstreamer-1.0 REQUIRED)
-    foreach(lib gstreamer gstapp gstbase gstvideo)
-        find_library(${lib}_LIB NAMES ${lib}-1.0 lib${lib}-1.0.so.0 REQUIRED)
-    endforeach()
+    find_path(PIPEWIRE_INCLUDE pipewire/pipewire.h PATHS /usr/include/pipewire-0.3
+        ${CMAKE_SOURCE_DIR}/.deps/root/usr/include/pipewire-0.3 REQUIRED)
+    find_path(SPA_INCLUDE spa/param/video/format-utils.h PATHS /usr/include/spa-0.2
+        ${CMAKE_SOURCE_DIR}/.deps/root/usr/include/spa-0.2 REQUIRED)
+    find_library(pipewire_LIB NAMES pipewire-0.3 libpipewire-0.3.so.0 REQUIRED)
     add_library(quest-capture host/capture/capture.cpp)
-    target_include_directories(quest-capture PUBLIC host ${GST_INCLUDE})
-    target_link_libraries(quest-capture PUBLIC Qt5::Core Qt5::Gui PkgConfig::GLIB
-        ${gstreamer_LIB} ${gstapp_LIB} ${gstbase_LIB} ${gstvideo_LIB})
-    target_compile_options(quest-capture PRIVATE -Wall -Wextra -Wpedantic)
+    target_include_directories(quest-capture PUBLIC host PRIVATE ${PIPEWIRE_INCLUDE} ${SPA_INCLUDE})
+    target_link_libraries(quest-capture PUBLIC Qt5::Core Qt5::Gui PRIVATE ${pipewire_LIB})
+    # SPA's POD builder macros use C compound literals, which -Wpedantic rejects in C++.
+    target_compile_options(quest-capture PRIVATE -Wall -Wextra)
     add_executable(quest-capture-test host/capture/capture_test.cpp)
     target_link_libraries(quest-capture-test PRIVATE quest-capture)
     pkg_check_modules(AVCODEC REQUIRED IMPORTED_TARGET libavcodec libavutil)

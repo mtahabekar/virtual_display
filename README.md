@@ -1,8 +1,8 @@
 # Quest Displays — Ubuntu host
 
-The host prototype now creates three KDE virtual monitors, captures each independently through PipeWire, hardware-encodes each with NVIDIA NVENC, and serves three H.264 streams over localhost TCP. A Linux test receiver and the [Quest 3 client](https://github.com/mtahabekar/Quest-Linux-Virtual-Desktop) have received and hardware-decoded all three streams, including after reconnecting. A Quest is not required to start or diagnose the host.
+The host prototype now creates two KDE virtual monitors, captures each independently through PipeWire, hardware-encodes each with NVIDIA NVENC, and serves two H.264 streams over localhost TCP. A Linux test receiver and the [Quest 3 client](https://github.com/mtahabekar/Quest-Linux-Virtual-Desktop) have received and hardware-decoded all three streams, including after reconnecting. A Quest is not required to start or diagnose the host.
 
-**Current limitation: the 3 × 1440p @ 60 FPS performance target is not met.** The final moving-pattern test delivered 36.8 / 37.6 / 38.0 FPS, with zero host queue drops. A single monitor delivered about 53 FPS. This is a functioning prototype, not a completed performance optimization.
+**Current limitation: the 1440p @ 60 FPS performance target is not met.** Capture previously collapsed to 0–8 FPS whenever the desktop had been idle; that PipeWire buffer starvation is fixed (see *Inspected platform and dependencies*). With the fix, a Quest-connected moving-pattern test after an idle period delivered 37–39 FPS on each stream with the earlier three-monitor layout, with zero host queue drops and no reconnects. A single bare capture reaches about 63 FPS. The remaining ceiling is KWin's single compositor thread, which reads every virtual output back into memory and was measured at about 90% CPU. The streamer threads use about 16% each. Removing that ceiling needs DMA-BUF zero-copy capture into NVENC.
 
 The first headset run exposed transport-lock starvation that made QUEST-1 and QUEST-3 freeze while QUEST-2 remained responsive. The corrected Quest-connected run was balanced at 34.1 / 34.6 / 35.0 FPS with zero capture-queue drops or transport discards. The fix is installed in the running user service; details are in the [Quest 3 end-to-end report](docs/quest-e2e-report.md).
 
@@ -20,19 +20,24 @@ journalctl --user -u quest-displays -u quest-streams -f
 
 `quest-displays.service` owns the monitors and starts `quest-streams.service`. The latter waits for verified output state, then execs the C++ streaming process. Encoder failures can restart streaming without removing the monitors. Stopping the display service also stops streaming. Autostart is tied to `plasma-workspace.target`; session checks require Wayland and a live KWin instance. Login/reboot recreation is configured, but an actual logout/reboot has not been tested in this session. Manual and service restarts have been tested.
 
-Streaming defaults: `127.0.0.1:27183`, H.264 High profile, 4:2:0, target 24 Mbps VBR per stream, no B-frames, 60-frame GOP, NVENC preset p4 / low-latency tuning. Static text does not consume the full bitrate budget. The service does not record video to disk. Edit `~/.config/quest-displays/config.json` to change bitrate or port, then restart `quest-streams`.
+Streaming defaults: `127.0.0.1:27183`, H.264 High profile, 4:2:0, up to 60 Mbps VBR per stream, no B-frames, 60-frame GOP, NVENC preset p1 with ultra-low-latency tuning. Both encoders share one CUDA context. The USB link carries about 2 Gbps through ADB (measured with `adb push`), so the host spends bits rather than encoder effort. Static text does not consume the full bitrate budget. The service does not record video to disk. Edit `~/.config/quest-displays/config.json` (`bitrate_mbps`, `port`, `laptop_off_when_connected`), then restart `quest-streams`.
+
+**Headset mode** (`laptop_off_when_connected`, on by default): once the Quest client has stayed connected for 1.5 s, `quest-laptop-display off` disables every enabled physical output, so only the Quest monitors remain. It records which outputs it disabled and re-enables exactly those 4 s after the client disconnects (for example, the app is paused or closed), when streaming stops, or when either service stops or crashes (`ExecStopPost`). It refuses to disable anything unless a Quest output is enabled. Run `~/.local/libexec/quest-laptop-display on` to restore the laptop screen manually. With the laptop screen off, the two-monitor moving-pattern test captured about 31 FPS per stream, compared with about 25 FPS with it on.
+
+The virtual outputs are created with the hidden screencast cursor mode. They have no hardware cursor plane, so KWin already draws the pointer into each output; the embedded mode painted a second, misplaced copy once KDE applied a desktop scale.
 
 ## Monitors and diagnostics
 
 | Stream ID | Logical name | KWin 5.27 connector | Mode |
 |---|---|---|---|
-| 0 | QUEST-1 | Virtual-QUEST-1 | 2560×1440 @ 60 Hz, scale 1 |
-| 1 | QUEST-2 | Virtual-QUEST-2 | 2560×1440 @ 60 Hz, scale 1 |
-| 2 | QUEST-3 | Virtual-QUEST-3 | 2560×1440 @ 60 Hz, scale 1 |
+| 0 | QUEST-1 | Virtual-QUEST-1 | 2560×1440 @ 60 Hz, any scale |
+| 1 | QUEST-2 | Virtual-QUEST-2 | 2560×1440 @ 60 Hz, any scale |
 
-KWin adds the `Virtual-` prefix. The number and modes are fixed; KDE can arrange the outputs in **System Settings → Display and Monitor → Display Configuration**. You confirmed all three appear there. Ordinary 2D test windows were placed on each output and their contents verified through capture and decoding.
+The monitor count is set in one place, [host/monitors.h](host/monitors.h) (mirrored in `host/diagnostics/doctor.py` and `tools/receiver.py`). Launch the Quest client with the same count: `adb shell am start -S -n com.example.questlinuxvirtualdesktop/.ImmersiveActivity --ei streams 2`. Each monitor needs GPU memory for its KWin output and its NVENC session; if `quest-streams` logs `CUDA_ERROR_OUT_OF_MEMORY`, free GPU memory (check `nvidia-smi`) and run `systemctl --user reset-failed quest-streams && systemctl --user restart quest-streams`.
 
-The saved layout places the three virtual monitors to the right of the laptop and HDMI displays. Physical keyboard and mouse remain the only input. Keep Quest outputs enabled at scale 100%; disabling or changing a required mode causes the display owner to exit and the service to recreate it. Arrangement was restored across host restarts.
+KWin adds the `Virtual-` prefix. The number and modes are fixed; KDE can arrange the outputs in **System Settings → Display and Monitor → Display Configuration**. Both appear there. Ordinary 2D test windows were placed on each output and their contents verified through capture and decoding.
+
+The saved layout places the virtual monitors to the right of the laptop and HDMI displays. Physical keyboard and mouse remain the only input. Keep Quest outputs enabled. Any scale works because KWin streams the full 2560×1440 mode; disabling an output or changing its mode causes the display owner to exit and the service to recreate it. Arrangement was restored across host restarts.
 
 ```bash
 cd /home/taha/virtual_display
@@ -42,17 +47,19 @@ python3 tools/kscreen-doctor.py -o
 cat "$XDG_RUNTIME_DIR/quest-displays/state.json"
 ```
 
-The doctor checks Wayland, KWin, PipeWire, NVIDIA, protocol access, exactly three enabled Quest outputs with current 2560×1440 modes, output IDs and live node mappings. The state file is session-local. PipeWire IDs, serials and Wayland globals change on recreation; do not hard-code them. The capture process verifies the node's KWin media name and resolves its object serial before connecting.
+The doctor checks Wayland, KWin, PipeWire, NVIDIA, protocol access, exactly the two enabled Quest outputs with current 2560×1440 modes, output IDs and live node mappings. The state file is session-local. PipeWire IDs, serials and Wayland globals change on recreation; do not hard-code them. The capture process verifies the node's KWin media name and resolves its object serial before connecting.
 
 ## Inspected platform and dependencies
 
 Tested September 11, 2026: Ubuntu 24.04.4 LTS; kernel 7.0.0-31-generic; Plasma 5.27.12 / KWin 5.27.11 on Wayland; RTX 5070 Laptop GPU with driver 580.173.02; PipeWire 1.0.5; GStreamer 1.24.2; Qt 5.15.13; FFmpeg libraries 6.1.1; ADB 34.0.4-debian.
 
-Build dependencies: `build-essential cmake pkg-config python3 qtbase5-dev libwayland-dev libwayland-bin libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavutil-dev`. Runtime requires KDE/KWin Wayland, PipeWire with its GStreamer source, GStreamer base plugins, the NVIDIA driver/encode library and those shared media libraries. KDE utilities come from `libkf5screen-bin` and `libkf5service-bin`.
+Build dependencies: `build-essential cmake pkg-config python3 qtbase5-dev libwayland-dev libwayland-bin libglib2.0-dev libpipewire-0.3-dev libspa-0.2-dev libavcodec-dev libavutil-dev`. Runtime requires KDE/KWin Wayland, PipeWire (`libpipewire-0.3`), the NVIDIA driver/encode library and those shared media libraries. KDE utilities come from `libkf5screen-bin` and `libkf5service-bin`.
+
+Capture uses a native `pw_stream` consumer, not GStreamer's `pipewiresrc`. KWin 5.27 drives each screencast stream without `pw_stream_trigger_process()`, and PipeWire 1.0 returns at most one already-requeued buffer to KWin per graph cycle. `pipewiresrc` requeues buffers later, from its GStreamer thread, so every late cycle permanently removed one of KWin's 16 buffers. When they ran out, KWin silently stopped recording frames, typically after the desktop had been idle, and capture fell to 0–8 FPS in short bursts. The native consumer copies each frame and requeues its buffer inside the real-time `process` callback, so KWin gets every buffer back in the same cycle.
 
 GStreamer's `nvh264enc` element is absent on this machine. Encoding uses **libavcodec's `h264_nvenc` directly**, which was verified by actual hardware encode and decode tests. No software-encoding fallback exists. No CUDA toolkit or GStreamer NVENC plugin needs installing for this implementation.
 
-GStreamer headers and FFmpeg command-line tools were missing. Five Ubuntu packages were downloaded and extracted into `.deps/`, without installing them: `libgstreamer1.0-dev`, `libgstreamer-plugins-base1.0-dev`, `ffmpeg`, `libavdevice60`, and `libopenal1`. The last two satisfy CLI loader dependencies; the project implements no audio. Existing system libraries provide the C++ runtime.
+PipeWire headers and FFmpeg command-line tools were missing. Ubuntu packages were downloaded and extracted into `.deps/`, without installing them: `libpipewire-0.3-dev`, `libspa-0.2-dev`, `ffmpeg`, `libavdevice60`, and `libopenal1`. The last two satisfy CLI loader dependencies; the project implements no audio. Existing system libraries provide the C++ runtime.
 
 ## Build and install
 
@@ -80,7 +87,7 @@ systemctl --user enable --now quest-displays
 
 Installed files are in `~/.local/libexec/`, `~/.local/share/applications/org.questdisplays.Host.desktop`, and `~/.config/systemd/user/quest-{displays,streams}.service`. The installer preserves an existing configuration file. It registers the exact executable and only the required KDE screencast interface. Use `python3 tools/register-desktop.py --native-user-paths` for display-only registration; the flag avoids this Snap IDE's inherited XDG paths. KDE's custom interface-list property must not have an XDG-style trailing semicolon.
 
-For a foreground display-only run, first stop the service, then run `~/.local/libexec/quest-displays --run`. Ctrl-C removes its three outputs. The lock and KScreen inventory reject duplicate ownership, including disabled Quest outputs.
+For a foreground display-only run, first stop the service, then run `~/.local/libexec/quest-displays --run`. Ctrl-C removes its outputs. The lock and KScreen inventory reject duplicate ownership, including disabled Quest outputs.
 
 ## Capture locally — Milestone 2
 

@@ -9,7 +9,7 @@ Every access unit has this 32-byte header. All multibyte integers are unsigned, 
 | 0 | 4 | magic | ASCII `QSTV` |
 | 4 | 1 | version | 1 |
 | 5 | 1 | message type | 1 = video access unit |
-| 6 | 1 | stream ID | 0, 1, 2 = QUEST-1, QUEST-2, QUEST-3 |
+| 6 | 1 | stream ID | 0, 1 = QUEST-1, QUEST-2 |
 | 7 | 1 | codec | 1 = H.264 |
 | 8 | 2 | width | 2560 |
 | 10 | 2 | height | 1440 |
@@ -27,6 +27,6 @@ The FPS fields describe the target, not measured delivery. Rendering damage, cap
 
 The server has a bounded queue (12 packets and 16 MiB, plus at most one 8 MiB packet being sent) and a bounded socket send buffer. It disconnects a client if the queue overflows or a pending write makes no progress for two seconds. It does not silently discard predictive frames and continue an undecodable sequence. On reconnect, the client must reset its decoders and wait for each stream's new SPS/PPS + IDR. A second simultaneous TCP client is closed.
 
-The Android client demultiplexes by stream ID, configures three MediaCodec H.264 decoders from the parameter sets, and submits each complete access unit with its timestamp to the corresponding decoder. This path was tested with three simultaneous Qualcomm hardware decoders on Quest 3 on September 12, 2026; see [quest-e2e-report.md](quest-e2e-report.md).
+The Android client demultiplexes by stream ID, configures one MediaCodec H.264 decoder per stream (launch it with `--ei streams 2`) from the parameter sets, and submits each complete access unit with its timestamp to the corresponding decoder. This path was tested with three simultaneous Qualcomm hardware decoders on Quest 3 on September 12, 2026; see [quest-e2e-report.md](quest-e2e-report.md).
 
 For USB, use `adb -s DEVICE_SERIAL reverse tcp:27183 tcp:27183`. The Android client connects to device `127.0.0.1:27183`; ADB carries it to the Linux loopback listener. Reapply the mapping after reconnecting the USB device. This is ordinary app networking over ADB, not Quest Link.

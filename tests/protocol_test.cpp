@@ -18,7 +18,7 @@ struct FakeOutput {
 };
 struct Fake {
     wl_display *display = nullptr;
-    std::array<FakeOutput, 3> outputs;
+    std::array<FakeOutput, quest::MonitorCount> outputs;
     int requested = 0, closed = 0;
     bool reject = false, invalid = false;
 };
@@ -42,12 +42,12 @@ void virtualRequest(wl_client *client, wl_resource *resource, uint32_t id, const
                     int32_t width, int32_t height, wl_fixed_t scale, uint32_t pointer)
 {
     auto &f = *static_cast<Fake *>(wl_resource_get_user_data(resource));
-    if (f.requested >= 3) { f.invalid = true; return; }
+    if (f.requested >= quest::MonitorCount) { f.invalid = true; return; }
     auto &o = f.outputs[f.requested];
     o.owner = &f;
     o.id = f.requested++;
     if (std::string(name) != "QUEST-" + std::to_string(o.id + 1) || width != Width || height != Height ||
-        scale != wl_fixed_from_int(1) || pointer != ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED)
+        scale != wl_fixed_from_int(1) || pointer != ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_HIDDEN)
         f.invalid = true;
     auto *stream = wl_resource_create(client, &zkde_screencast_stream_unstable_v1_interface, 3, id);
     static const struct zkde_screencast_stream_unstable_v1_interface impl = {
@@ -56,7 +56,7 @@ void virtualRequest(wl_client *client, wl_resource *resource, uint32_t id, const
     wl_resource_set_implementation(stream, &impl, &o, [](wl_resource *r) {
         auto &o = *static_cast<FakeOutput *>(wl_resource_get_user_data(r));
         if (o.global) { wl_global_destroy(o.global); o.global = nullptr; }
-        if (++o.owner->closed == 3) wl_display_terminate(o.owner->display);
+        if (++o.owner->closed == quest::MonitorCount) wl_display_terminate(o.owner->display);
     });
     o.global = wl_global_create(f.display, &wl_output_interface, 4, &o, bindOutput);
     if (f.reject && o.id == 1)
@@ -93,7 +93,7 @@ bool scenario(bool reject)
         wl_display_run(f.display);
         wl_display_destroy_clients(f.display);
         wl_display_destroy(f.display);
-        _exit(f.requested == 3 && f.closed == 3 && !f.invalid ? 0 : 1);
+        _exit(f.requested == quest::MonitorCount && f.closed == quest::MonitorCount && !f.invalid ? 0 : 1);
     }
     close(sockets[1]);
     qputenv("WAYLAND_SOCKET", QByteArray::number(sockets[0]));

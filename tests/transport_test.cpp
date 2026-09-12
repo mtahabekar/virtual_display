@@ -28,7 +28,8 @@ int main() {
         quest::TransportServer server(0);
         int client = connectTo(server.port());
         waitUntil([&] { return server.connections() == 1; });
-        require(server.takeKeyframeRequest(0) && server.takeKeyframeRequest(1) && server.takeKeyframeRequest(2), "Missing IDR requests");
+        for (int id = 0; id < quest::MonitorCount; ++id)
+            require(server.takeKeyframeRequest(id), "Missing IDR requests");
         server.publish({0, 10, false, {0, 0, 1, 0x41}});
         pollfd fd{client, POLLIN, 0};
         require(poll(&fd, 1, 30) == 0, "Predictive frame sent before keyframe");

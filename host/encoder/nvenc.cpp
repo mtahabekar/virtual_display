@@ -1,8 +1,10 @@
 #include "nvenc.h"
 extern "C" {
+#include <libavutil/hwcontext.h>
 #include <libavutil/opt.h>
 }
 #include <cstring>
+#include <mutex>
 #include <stdexcept>
 
 namespace quest {
@@ -11,6 +13,16 @@ static void check(int result, const char *operation) {
     char error[AV_ERROR_MAX_STRING_SIZE];
     av_strerror(result, error, sizeof(error));
     throw std::runtime_error(std::string(operation) + ": " + error);
+}
+// Without a device, every h264_nvenc session creates its own CUDA context
+// (about 280 MB of VRAM each). All encoders share this one instead.
+static AVBufferRef *sharedCudaDevice()
+{
+    static std::mutex mutex;
+    static AVBufferRef *device = nullptr;
+    std::lock_guard<std::mutex> lock(mutex);
+    if (!device) check(av_hwdevice_ctx_create(&device, AV_HWDEVICE_TYPE_CUDA, nullptr, nullptr, 0), "Create shared CUDA device");
+    return device;
 }
 VideoEncoder::VideoEncoder(int monitorId, int bitrateMbps, PacketSink output) : id(monitorId), sink(std::move(output))
 {
@@ -36,8 +48,12 @@ VideoEncoder::VideoEncoder(int monitorId, int bitrateMbps, PacketSink output) : 
         context->color_trc = AVCOL_TRC_BT709;
         context->colorspace = AVCOL_SPC_BT709;
         context->color_range = AVCOL_RANGE_MPEG;
+        context->hw_device_ctx = av_buffer_ref(sharedCudaDevice());
+        if (!context->hw_device_ctx) throw std::bad_alloc();
+        // The USB link carries far more than these streams need, so spend bits
+        // instead of encoder effort: fastest preset, ultra-low-latency tuning.
         for (const auto &option : std::vector<std::pair<const char *, const char *>>{
-                 {"preset", "p4"}, {"tune", "ll"}, {"profile", "high"}, {"rc", "vbr"},
+                 {"preset", "p1"}, {"tune", "ull"}, {"profile", "high"}, {"rc", "vbr"},
                  {"rgb_mode", "yuv420"}, {"rc-lookahead", "0"}, {"zerolatency", "1"},
                  {"delay", "0"}, {"forced-idr", "1"}})
             check(av_opt_set(context->priv_data, option.first, option.second, 0), option.first);

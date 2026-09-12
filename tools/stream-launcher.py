@@ -12,6 +12,7 @@ def main():
     try:
         config = json.loads(config_path.read_text())
         bitrate, port = config["bitrate_mbps"], config["port"]
+        laptop_off = config.get("laptop_off_when_connected", True)
         if type(bitrate) is not int or not 1 <= bitrate <= 150 or type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("Invalid bitrate_mbps or port")
     except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -25,7 +26,8 @@ def main():
             if state.get("ready") and Path(f"/proc/{state['pid']}/exe").resolve(strict=True).name == "quest-displays":
                 binary = Path(__file__).resolve().parent / "quest-streams"
                 os.execv(str(binary), [str(binary), "--no-record", "--listen", str(port), "--bitrate", str(bitrate),
-                                      "--output", str(runtime / "streams")])
+                                      "--output", str(runtime / "streams"),
+                                      *(["--laptop-off-when-connected"] if laptop_off is True else [])])
         except (OSError, ValueError, KeyError):
             pass
         time.sleep(0.1)

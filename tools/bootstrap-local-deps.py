@@ -7,8 +7,7 @@ root = Path(__file__).resolve().parents[1] / ".deps"
 packages = root / "packages"
 packages.mkdir(parents=True, exist_ok=True)
 # Versions match the installed and tested Ubuntu Noble runtime libraries.
-specs = ["libgstreamer1.0-dev=1.24.2-1ubuntu0.1",
-         "libgstreamer-plugins-base1.0-dev=1.24.2-1ubuntu0.4",
+specs = ["libpipewire-0.3-dev=1.0.5-1ubuntu3.3", "libspa-0.2-dev=1.0.5-1ubuntu3.3",
          "ffmpeg=7:6.1.1-3ubuntu5", "libavdevice60=7:6.1.1-3ubuntu5",
          "libopenal1=1:1.23.1-4build1"]
 print("Downloading and extracting into", root, flush=True)

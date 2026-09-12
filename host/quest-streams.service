@@ -3,13 +3,17 @@ Description=Quest PipeWire capture, NVENC encoding and localhost transport
 After=quest-displays.service
 BindsTo=quest-displays.service
 PartOf=quest-displays.service
-StartLimitIntervalSec=60
-StartLimitBurst=5
+StartLimitIntervalSec=900
+StartLimitBurst=8
 
 [Service]
 Type=exec
 ExecStart=%h/.local/libexec/quest-stream-launcher
 Restart=on-failure
 RestartPreventExitStatus=2
-RestartSec=3
+RestartSec=5
+RestartSteps=4
+RestartMaxDelaySec=90
 TimeoutStopSec=15
+# Never leave the laptop screen off after streaming stops or crashes.
+ExecStopPost=-%h/.local/libexec/quest-laptop-display on

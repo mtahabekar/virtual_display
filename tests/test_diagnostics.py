@@ -13,7 +13,7 @@ def config():
         {"name": f"Virtual-QUEST-{i + 1}", "id": i + 2, "connected": True, "enabled": True,
          "scale": 1, "currentModeId": "1", "pos": {"x": i * 2560, "y": 0},
          "modes": [{"id": "1", "size": {"width": 2560, "height": 1440}, "refreshRate": 60}]}
-        for i in range(3)]}
+        for i in range(doctor.MONITOR_COUNT)]}
 
 
 class OutputVerification(unittest.TestCase):
@@ -22,7 +22,7 @@ class OutputVerification(unittest.TestCase):
         c["outputs"].append({"name": "eDP-1", "id": 1, "enabled": True})
         errors, outputs = doctor.verify_outputs(c)
         self.assertEqual(errors, [])
-        self.assertEqual(len(outputs), 3)
+        self.assertEqual(len(outputs), doctor.MONITOR_COUNT)
 
     def test_advertised_mode_is_not_current_mode(self):
         c = config()
@@ -30,13 +30,18 @@ class OutputVerification(unittest.TestCase):
         c["outputs"][0]["currentModeId"] = "2"
         self.assertTrue(doctor.verify_outputs(c)[0])
 
-    def test_duplicate_missing_extra_disabled_and_scale(self):
+    def test_fractional_scale_is_accepted(self):
+        c = config()
+        for o in c["outputs"]:
+            o["scale"] = 1.25
+        self.assertEqual(doctor.verify_outputs(c)[0], [])
+
+    def test_duplicate_missing_extra_and_disabled(self):
         for mutate in (
             lambda c: c["outputs"].pop(),
             lambda c: c["outputs"].append(copy.deepcopy(c["outputs"][0])),
             lambda c: c["outputs"][0].update(name="Virtual-QUEST-4"),
             lambda c: c["outputs"][0].update(enabled=False),
-            lambda c: c["outputs"][0].update(scale=1.25),
             lambda c: c["outputs"][0].update(id=3),
         ):
             with self.subTest(mutate=mutate):

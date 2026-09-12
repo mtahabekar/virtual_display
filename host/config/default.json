@@ -1,4 +1,5 @@
 {
-  "bitrate_mbps": 24,
-  "port": 27183
+  "bitrate_mbps": 60,
+  "port": 27183,
+  "laptop_off_when_connected": true
 }

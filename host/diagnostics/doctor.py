@@ -9,7 +9,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-EXPECTED = {f"QUEST-{i + 1}" for i in range(3)}
+MONITOR_COUNT = 2  # keep in sync with host/monitors.h
+EXPECTED = {f"QUEST-{i + 1}" for i in range(MONITOR_COUNT)}
 
 
 def command(args, timeout=10, env=None):
@@ -32,8 +33,8 @@ def verify_outputs(config):
     errors, monitors = [], []
     outputs = [o for o in config.get("outputs", []) if canonical(o.get("name", "")).startswith("QUEST-")]
     names = [canonical(o.get("name", "")) for o in outputs]
-    if len(names) != 3 or set(names) != EXPECTED:
-        errors.append(f"Expected exactly QUEST-1/2/3 (optional Virtual- prefix); found {names}")
+    if len(names) != MONITOR_COUNT or set(names) != EXPECTED:
+        errors.append(f"Expected exactly {sorted(EXPECTED)} (optional Virtual- prefix); found {names}")
     for output in outputs:
         name = output["name"]
         current = str(output.get("currentModeId", ""))
@@ -44,8 +45,6 @@ def verify_outputs(config):
             errors.append(f"{name} is disconnected or disabled")
         if (size.get("width"), size.get("height")) != (2560, 1440):
             errors.append(f"{name} current mode is not 2560x1440: {size}")
-        if output.get("scale") != 1:
-            errors.append(f"{name} scale must be 1 for the first prototype")
         if not 59 <= mode.get("refreshRate", 0) <= 61:
             errors.append(f"{name} current refresh is not approximately 60 Hz")
         if "id" not in output:
@@ -128,7 +127,7 @@ def main():
     kscreen = decode(kscreen_result)
     evidence["kscreen"] = kscreen if kscreen is not None else kscreen_result
     errors, monitors = verify_outputs(kscreen) if isinstance(kscreen, dict) else (["No valid KScreen configuration"], [])
-    record("three_monitors", not errors, errors or monitors)
+    record("quest_monitors", not errors, errors or monitors)
 
     state_errors = []
     try:
@@ -142,10 +141,10 @@ def main():
         if state.get("wayland_display") != os.environ.get("WAYLAND_DISPLAY"):
             state_errors.append("State belongs to a different Wayland display")
         feeds = state.get("monitors", [])
-        if len(feeds) != 3 or {f.get("id") for f in feeds} != {0, 1, 2}:
-            state_errors.append("Expected exactly three fixed stream IDs")
+        if len(feeds) != MONITOR_COUNT or {f.get("id") for f in feeds} != set(range(MONITOR_COUNT)):
+            state_errors.append("Expected exactly the fixed stream IDs")
         node_ids = [f.get("pipewire_node") for f in feeds]
-        if len(set(node_ids)) != 3:
+        if len(set(node_ids)) != MONITOR_COUNT:
             state_errors.append("PipeWire node IDs must be distinct")
         live_node_ids = {n.get("id") for n in nodes or [] if n.get("type") == "PipeWire:Interface:Node"}
         live_outputs = {o["name"]: o for o in (probe or {}).get("outputs", [])}
@@ -161,7 +160,7 @@ def main():
                 state_errors.append(f"{feed.get('name')}: Wayland output identifier does not match")
     except (OSError, ValueError, KeyError, TypeError) as exc:
         state_errors.append(f"Cannot validate runtime state: {exc}")
-    record("live_stream_mapping", not state_errors, state_errors or "Three live output-to-node mappings verified")
+    record("live_stream_mapping", not state_errors, state_errors or "Live output-to-node mappings verified")
     report = {"milestone": 1, "passed": all(v["ok"] for v in checks.values()), "checks": checks, "evidence": evidence}
     if args.json:
         print(json.dumps(report, indent=2))
