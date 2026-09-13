@@ -1,5 +1,7 @@
 # Quest 3 end-to-end validation — 2026-09-12
 
+Historical development report: the three-display measurements below describe the older NVIDIA implementation, not the current two-display Intel path. Current stream IDs are only 0 and 1; Intel/Quest validation remains manual.
+
 The Ubuntu host was tested over USB with the Quest client from
 [`mtahabekar/Quest-Linux-Virtual-Desktop`](https://github.com/mtahabekar/Quest-Linux-Virtual-Desktop)
 at commit `676589ca40ebf7ec80ed41e5faa396ebfe73be2a`.

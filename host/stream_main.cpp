@@ -1,5 +1,5 @@
 #include "capture/capture.h"
-#include "encoder/nvenc.h"
+#include "encoder/video_encoder.h"
 #include "transport/tcp_server.h"
 #include <QCoreApplication>
 #include <QCommandLineParser>
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     av_log_set_level(AV_LOG_WARNING);
     QCommandLineParser parser;
-    parser.setApplicationDescription("Independent KWin/PipeWire to NVENC H.264 streams");
+    parser.setApplicationDescription("Two KWin/PipeWire hardware H.264 streams (Intel VAAPI / NVENC)");
     parser.addHelpOption();
     parser.addOption({"monitor", "Monitor ID (0-based), or all", "id", "all"});
     parser.addOption({"seconds", "Duration in seconds, 0 runs until stopped", "seconds", "0"});
@@ -39,9 +39,23 @@ int main(int argc, char **argv)
     parser.addOption({"listen", "TCP port on 127.0.0.1; 0 disables transport", "port", "0"});
     parser.addOption({"no-record", "Do not write video files; keep statistics and TCP output only"});
     parser.addOption({"laptop-off-when-connected", "Switch physical displays off while a headset client is connected"});
+    parser.addOption({"encoder", "auto, intel-vaapi, intel-qsv (reserved), nvenc", "backend", "auto"});
+    parser.addOption({"allow-nvenc-fallback", "Permit auto to use NVIDIA if Intel initialization fails"});
+    parser.addOption({"intel-render-node", "Optional Intel render device (vendor validated)", "path"});
+    parser.addOption({"capture-memory", "auto (prefer Intel DMA-BUF), cpu, dmabuf", "mode", "auto"});
+    parser.addOption({"gop", "GOP in frames (1..600)", "frames", "60"});
+    parser.addOption({"vbv-ms", "Rate-control buffer in milliseconds (10..1000)", "ms", "50"});
     parser.process(app);
     std::signal(SIGINT, stop); std::signal(SIGTERM, stop);
     try {
+        quest::EncoderOptions encoderOptions;
+        encoderOptions.backend = parser.value("encoder").toStdString();
+        encoderOptions.renderNode = parser.value("intel-render-node").toStdString();
+        encoderOptions.allowNvencFallback = parser.isSet("allow-nvenc-fallback");
+        encoderOptions.gop = parser.value("gop").toInt();
+        encoderOptions.vbvMs = parser.value("vbv-ms").toInt();
+        const auto memory = parser.value("capture-memory");
+        if (memory != "auto" && memory != "cpu" && memory != "dmabuf") throw std::runtime_error("Invalid capture-memory");
         bool secOk, rateOk, portOk, idOk = true;
         const int seconds = parser.value("seconds").toInt(&secOk), rate = parser.value("bitrate").toInt(&rateOk);
         const auto selection = parser.value("monitor");
@@ -79,9 +93,12 @@ int main(int argc, char **argv)
                         if (record && file.write(reinterpret_cast<const char *>(packet.bytes.data()), packet.bytes.size()) != qint64(packet.bytes.size()))
                             throw std::runtime_error("H.264 output write failed");
                         if (transport) transport->publish(std::move(packet));
-                    });
-                    log(QString("[encoder:%1] NVENC H264 initialized, 2560x1440, target 60 FPS, %2 Mbps").arg(m.id).arg(rate));
-                    quest::CaptureSession capture(m);
+                    }, encoderOptions);
+                    log(QString("[encoder:%1] %2 device=%3, H264 2560x1440, target 60 FPS, %4 Mbps")
+                        .arg(m.id).arg(QString::fromStdString(encoder.name())).arg(QString::fromStdString(encoder.device())).arg(rate));
+                    auto converter = memory == "cpu" ? nullptr : encoder.dmaConverter();
+                    if (memory == "dmabuf" && !converter) throw std::runtime_error("DMA-BUF capture requires Intel VAAPI");
+                    auto capture = std::make_unique<quest::CaptureSession>(m, converter, memory == "dmabuf");
                     log(QString("[capture:%1] node=%2 serial=%3").arg(m.id).arg(m.node).arg(m.serial));
                     auto started = Clock::now(), lastLog = started;
                     uint64_t previousCapture = 0, previousEncoded = 0, previousBytes = 0;
@@ -92,11 +109,22 @@ int main(int argc, char **argv)
                     auto lastSubmit = started;
                     bool forcePending = false;
                     while (!interrupted && !failed && (seconds == 0 || Clock::now() - started < std::chrono::seconds(seconds))) {
-                        auto sample = capture.next();
+                        quest::Sample sample;
+                        try { sample = capture->next(); }
+                        catch (const std::exception &e) {
+                            if (memory != "auto" || !converter) throw;
+                            log(QString("[capture:%1] Intel DMA-BUF unavailable: %2; retrying CPU capture once").arg(m.id).arg(e.what()));
+                            capture.reset(); // settle outstanding GPU reads before reusing the converter
+                            converter.reset();
+                            capture = std::make_unique<quest::CaptureSession>(m);
+                            lastSample.reset(); forcePending = true;
+                            consumed = previousCapture = 0;
+                            continue;
+                        }
                         if (transport) forcePending |= transport->takeKeyframeRequest(m.id);
                         const bool repeat = !sample && lastSample && (forcePending || Clock::now() - lastSubmit >= std::chrono::seconds(1));
                         if (sample || repeat) {
-                            quest::MappedFrame frame(sample ? sample.get() : lastSample.get());
+                            quest::MappedFrame frame(sample ? sample : lastSample);
                             // A common monotonic host timeline is used on the wire.
                             // It timestamps sample consumption, not GPU render time.
                             const auto pts = std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - epoch).count();
@@ -114,23 +142,24 @@ int main(int argc, char **argv)
                         const double interval = std::chrono::duration<double>(now - lastLog).count();
                         if (interval >= 2) {
                             log(QString("[stream:%1] capture=%2 FPS encode=%3 FPS %4 Mbps queue_dropped=%5 encode_latency=%6 ms")
-                                .arg(m.id).arg((capture.captured()-previousCapture)/interval, 0, 'f', 1)
+                                .arg(m.id).arg((capture->captured()-previousCapture)/interval, 0, 'f', 1)
                                 .arg((encoder.frames-previousEncoded)/interval, 0, 'f', 1)
                                 .arg((encoder.bytes-previousBytes)*8e-6/interval, 0, 'f', 2)
-                                .arg(capture.dropped()).arg(encoder.frames ? encoder.latencyTotalMs/encoder.frames : 0, 0, 'f', 2));
-                            previousCapture=capture.captured(); previousEncoded=encoder.frames; previousBytes=encoder.bytes; lastLog=now;
+                                .arg(capture->dropped()).arg(encoder.frames ? encoder.latencyTotalMs/encoder.frames : 0, 0, 'f', 2));
+                            previousCapture=capture->captured(); previousEncoded=encoder.frames; previousBytes=encoder.bytes; lastLog=now;
                         }
                     }
-                    const auto captured = capture.captured(), dropped = capture.dropped();
+                    const auto captured = capture->captured(), dropped = capture->dropped();
                     const double elapsed = std::chrono::duration<double>(Clock::now() - started).count();
                     encoder.flush();
                     if (record && !file.flush()) throw std::runtime_error("Could not flush output file");
                     if (!consumed) throw std::runtime_error("No video frames captured");
                     reports[m.id] = {{"monitor_id", m.id}, {"output", m.output}, {"pipewire_serial", m.serial},
-                        {"width", 2560}, {"height", 1440}, {"target_fps", 60}, {"codec", "h264"}, {"encoder", "h264_nvenc"},
+                        {"width", 2560}, {"height", 1440}, {"target_fps", 60}, {"codec", "h264"}, {"encoder", QString::fromStdString(encoder.name())},
+                        {"capture_memory", capture->usingDmaBuf() ? "dmabuf" : "cpu"},
                         {"seconds", elapsed}, {"capture_frames", qint64(captured)}, {"encoded_frames", qint64(encoder.frames)},
                         {"capture_fps", captured/elapsed}, {"encoded_fps", encoder.frames/elapsed},
-                        {"queue_dropped", qint64(dropped)}, {"capture_pending_at_stop", qint64(captured-consumed-dropped)},
+                        {"queue_dropped", qint64(dropped)}, {"capture_pending_at_stop", qint64(captured > consumed + dropped ? captured-consumed-dropped : 0)},
                         {"timestamp_adjustments", qint64(encoder.timestampAdjustments)},
                         {"source_timestamp_nonmonotonic", qint64(sourceTimestampRepeats)}, {"static_repeat_frames", qint64(repeated)},
                         {"bitrate_mbps", encoder.bytes*8e-6/elapsed}, {"bytes", qint64(encoder.bytes)},

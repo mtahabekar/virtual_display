@@ -1,5 +1,5 @@
 #pragma once
-#include "encoder/nvenc.h"
+#include "encoder/video_encoder.h"
 #include <array>
 #include <atomic>
 #include <deque>

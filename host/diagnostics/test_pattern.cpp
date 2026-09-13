@@ -23,7 +23,7 @@ protected:
     void paintEvent(QPaintEvent *) override {
         QPainter p(this);
         p.scale(width() / 2560.0, height() / 1440.0);
-        const QColor colors[] = {QColor("#153043"), QColor("#273a23"), QColor("#39273c")};
+        const QColor colors[] = {QColor("#153043"), QColor("#273a23")};
         p.fillRect(QRect(0, 0, 2560, 1440), colors[id]);
         p.setPen(QColor("#ffffff"));
         p.setFont(QFont("DejaVu Sans", 48, QFont::Bold));

@@ -1,6 +1,6 @@
 # API selection and verification limits
 
-Inspected September 11, 2026. The installed KWin is 5.27.11, not Plasma 6. After switching from GNOME to Plasma Wayland, live registry inspection confirmed screencast protocol version 3. KWin's D-Bus `/Plugins` reports `kwin5_plugin_screencast` loaded. `/KWin` introspection matches the expected diagnostic interface. Source inspection was matched to the installed version, and the executable probes the real registry on every run.
+Historical development findings, inspected September 11, 2026. Three-display validation below describes the older NVIDIA prototype; the current product has exactly two displays and an Intel VAAPI path. The installed KWin is 5.27.11, not Plasma 6. After switching from GNOME to Plasma Wayland, live registry inspection confirmed screencast protocol version 3. KWin's D-Bus `/Plugins` reports `kwin5_plugin_screencast` loaded. `/KWin` introspection matches the expected diagnostic interface. Source inspection was matched to the installed version, and the executable probes the real registry on every run.
 
 ## Native KWin screencast extension — selected provisionally
 

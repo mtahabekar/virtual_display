@@ -1,5 +1,5 @@
 [Unit]
-Description=Quest PipeWire capture, NVENC encoding and localhost transport
+Description=Quest PipeWire capture, hardware H264 encoding and localhost transport
 After=quest-displays.service
 BindsTo=quest-displays.service
 PartOf=quest-displays.service

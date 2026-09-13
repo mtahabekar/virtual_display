@@ -9,7 +9,7 @@ packages.mkdir(parents=True, exist_ok=True)
 # Versions match the installed and tested Ubuntu Noble runtime libraries.
 specs = ["libpipewire-0.3-dev=1.0.5-1ubuntu3.3", "libspa-0.2-dev=1.0.5-1ubuntu3.3",
          "ffmpeg=7:6.1.1-3ubuntu5", "libavdevice60=7:6.1.1-3ubuntu5",
-         "libopenal1=1:1.23.1-4build1"]
+         "libopenal1=1:1.23.1-4build1", "libva-dev=2.20.0-2ubuntu0.2"]
 print("Downloading and extracting into", root, flush=True)
 subprocess.run(["apt-get", "download", *specs], cwd=packages, check=True)
 for package in packages.glob("*.deb"):

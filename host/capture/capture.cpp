@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "latest.h"
 #include <pipewire/pipewire.h>
 #include <spa/buffer/meta.h>
 #include <spa/param/video/format-utils.h>
@@ -19,6 +20,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <iostream>
 
 namespace quest {
 namespace {
@@ -78,12 +80,22 @@ std::vector<Monitor> discoverMonitors(const QString &path)
     return result;
 }
 
-MappedFrame::MappedFrame(const Frame *source) : ptsUs(source->ptsUs), frame(source) {}
-const uint8_t *MappedFrame::data() const { return frame->pixels.data(); }
+MappedFrame::MappedFrame(Sample source) : ptsUs(source->ptsUs), frame(std::move(source)) {}
+const uint8_t *MappedFrame::data() const {
+    if (frame->hardware) throw std::runtime_error("GPU frame has no CPU image mapping");
+    return frame->pixels.data();
+}
 int MappedFrame::stride() const { return frame->stride; }
 QImage MappedFrame::copyImage() const { return QImage(data(), Width, Height, stride(), QImage::Format_RGB32).copy(); }
 
 struct CaptureSession::Impl {
+    std::shared_ptr<DmaBufConverter> converter;
+    std::mutex processing;
+    std::atomic<bool> stopping{false};
+    bool dma = false, alpha = false, requireDma = false;
+    std::atomic<bool> logged{false};
+    std::atomic<bool> receivedDma{false};
+    uint64_t modifier = 0;
     pw_thread_loop *loop = nullptr;
     pw_context *context = nullptr;
     pw_core *core = nullptr;
@@ -99,7 +111,12 @@ struct CaptureSession::Impl {
 
     ~Impl()
     {
+        stopping = true;
         if (loop) pw_thread_loop_lock(loop);
+        std::lock_guard<std::mutex> processingLock(processing);
+        // A timed-out VPP conversion holds its producer buffer until this
+        // non-RT shutdown wait finishes. Never release GPU-read memory early.
+        if (converter) converter->settle();
         if (stream) pw_stream_destroy(stream);
         if (core) pw_core_disconnect(core);
         if (loop) { pw_thread_loop_unlock(loop); pw_thread_loop_stop(loop); }
@@ -131,11 +148,36 @@ struct CaptureSession::Impl {
             self.fail("Unexpected capture format (requires 2560x1440 BGRx)");
             return;
         }
+        const bool dma = self.converter && spa_pod_find_prop(param, nullptr, SPA_FORMAT_VIDEO_modifier);
+        if (self.requireDma && !dma) {
+            self.fail("Producer negotiated CPU memory despite required DMA-BUF (stop other consumers before retrying)");
+            self.stopping = true;
+            return;
+        }
+        if (self.logged && (dma != self.dma || info.modifier != self.modifier ||
+                            (info.format == SPA_VIDEO_FORMAT_BGRA) != self.alpha)) {
+            self.fail("Capture format changed; restart capture");
+            self.stopping = true;
+            return;
+        }
+        if (self.logged) return; // unchanged format; do not mutate an active frame pool
+        self.dma = dma;
+        self.modifier = info.modifier;
+        self.alpha = info.format == SPA_VIDEO_FORMAT_BGRA;
+        if (!dma && !self.logged) {
+            try {
+                for (auto &frame : self.pool) {
+                    frame->pixels.resize(size_t(Width) * 4 * Height);
+                    frame->hardware.reset();
+                }
+            } catch (const std::exception &e) { self.fail(e.what()); self.stopping = true; return; }
+        }
         uint8_t buffer[512];
         spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
         const spa_pod *params[] = {
             static_cast<const spa_pod *>(spa_pod_builder_add_object(&b, SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
-                SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemFd) | (1 << SPA_DATA_MemPtr)))),
+                SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(self.dma ? (1 << SPA_DATA_DmaBuf) :
+                    ((1 << SPA_DATA_MemFd) | (1 << SPA_DATA_MemPtr))))),
             static_cast<const spa_pod *>(spa_pod_builder_add_object(&b, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
                 SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Header),
                 SPA_PARAM_META_size, SPA_POD_Int(sizeof(spa_meta_header)))),
@@ -150,32 +192,60 @@ struct CaptureSession::Impl {
     static void onProcess(void *data)
     {
         auto &self = *static_cast<Impl *>(data);
+        if (self.stopping) return;
+        std::unique_lock<std::mutex> processingLock(self.processing, std::try_to_lock);
+        if (!processingLock.owns_lock()) return;
+        if (self.stopping) return;
         pw_buffer *latest = nullptr;
         while (pw_buffer *next = pw_stream_dequeue_buffer(self.stream)) {
+            ++self.arrivals;
             if (latest) { pw_stream_queue_buffer(self.stream, latest); ++self.drops; }
             latest = next;
         }
         if (!latest) return;
-        self.consume(latest->buffer);
+        try { self.consume(latest->buffer); }
+        catch (const std::exception &e) {
+            self.stopping = true;
+            self.fail(e.what());
+            // GPU work may still reference this buffer. Destructor settles it
+            // before destroying the stream; do not queue it prematurely.
+            if (self.dma) return;
+        }
         pw_stream_queue_buffer(self.stream, latest);
     }
     void consume(spa_buffer *buffer)
     {
+        if (!buffer->n_datas) { ++drops; return; }
         const spa_data &d = buffer->datas[0];
-        if (!d.data || !d.chunk || d.chunk->size == 0 || (d.chunk->flags & SPA_CHUNK_FLAG_CORRUPTED)) return;
+        if (!d.chunk || (d.chunk->flags & SPA_CHUNK_FLAG_CORRUPTED)) { ++drops; return; }
+        if (dma && d.type != SPA_DATA_DmaBuf) throw std::runtime_error("Negotiated DMA-BUF but received another memory type");
+        if (!dma && (!d.data || !d.chunk->size)) { ++drops; return; }
+        if (!logged) {
+            receivedDma = dma;
+            std::cerr << "[capture] memory=" << (dma ? "DMA-BUF" : (d.type == SPA_DATA_MemFd ? "MemFd" : "MemPtr"))
+                      << " format=" << (alpha ? "BGRA" : "BGRx") << " planes=" << buffer->n_datas
+                      << " stride=" << d.chunk->stride << " fourcc=" << (alpha ? "ARGB8888" : "XRGB8888")
+                      << " modifier=" << (dma ? std::to_string(modifier) : "none") << '\n';
+            logged = true;
+        }
         const uint32_t stride = d.chunk->stride > 0 ? uint32_t(d.chunk->stride) : Width * 4;
-        if (stride < Width * 4 || uint64_t(d.chunk->offset) + uint64_t(stride) * (Height - 1) + Width * 4 > d.maxsize) {
+        if (!dma && (stride < Width * 4 || uint64_t(d.chunk->offset) + uint64_t(stride) * (Height - 1) + Width * 4 > d.maxsize)) {
             fail("Captured buffer is smaller than 2560x1440 BGRx");
             return;
         }
-        ++arrivals;
         std::shared_ptr<Frame> frame;
         for (const auto &candidate : pool)
-            if (candidate.use_count() == 1) { frame = candidate; break; }
+            if (candidate.use_count() == 1 && (!candidate->hardware || av_buffer_is_writable(candidate->hardware->buf[0]))) { frame = candidate; break; }
         if (!frame) { ++drops; return; }
+        if (dma) {
+            if (!frame->hardware) throw std::runtime_error("Capture memory type changed; restart capture");
+            converter->import(buffer, modifier, alpha);
+            converter->convert(buffer, frame->hardware.get());
+        } else {
         const auto *source = static_cast<const uint8_t *>(d.data) + d.chunk->offset;
         for (int y = 0; y < Height; ++y)
             memcpy(frame->pixels.data() + y * Width * 4, source + y * stride, Width * 4);
+        }
         const auto *header = static_cast<const spa_meta_header *>(
             spa_buffer_find_meta_data(buffer, SPA_META_Header, sizeof(spa_meta_header)));
         frame->ptsUs = header && header->pts >= 0 ? header->pts / 1000
@@ -189,16 +259,19 @@ struct CaptureSession::Impl {
     }
 };
 
-CaptureSession::CaptureSession(const Monitor &m) : impl(std::make_unique<Impl>())
+CaptureSession::CaptureSession(const Monitor &m, std::shared_ptr<DmaBufConverter> converter, bool requireDma) : impl(std::make_unique<Impl>())
 {
     bool ok = false;
     m.serial.toULongLong(&ok);
     if (!ok) throw std::runtime_error("Invalid capture target");
     std::call_once(pipewireInit, [] { pw_init(nullptr, nullptr); });
     auto &s = *impl;
+    s.converter = std::move(converter);
+    s.requireDma = requireDma;
     for (int i = 0; i < PoolSize; ++i) {
         auto frame = std::make_shared<Frame>();
-        frame->pixels.resize(size_t(Width) * 4 * Height);
+        if (!s.converter) frame->pixels.resize(size_t(Width) * 4 * Height);
+        if (s.converter) frame->hardware = s.converter->allocate();
         frame->stride = Width * 4;
         s.pool.push_back(std::move(frame));
     }
@@ -214,6 +287,20 @@ CaptureSession::CaptureSession(const Monitor &m) : impl(std::make_unique<Impl>()
         e.state_changed = &Impl::onStateChanged;
         e.param_changed = &Impl::onParamChanged;
         e.process = &Impl::onProcess;
+        e.add_buffer = [](void *data, pw_buffer *buffer) {
+            auto &self = *static_cast<Impl *>(data);
+            // Import on the control loop whenever the producer has already
+            // supplied layout metadata. Some producers fill it on first use.
+            auto *b = buffer->buffer;
+            if (self.dma && b->n_datas && b->datas[0].chunk && b->datas[0].chunk->stride > 0) {
+                try { self.converter->import(b, self.modifier, self.alpha); }
+                catch (const std::exception &e) { self.fail(e.what()); self.stopping = true; }
+            }
+        };
+        e.remove_buffer = [](void *data, pw_buffer *buffer) {
+            auto &self = *static_cast<Impl *>(data);
+            if (self.converter && !self.stopping) self.converter->remove(buffer->buffer);
+        };
         return e;
     }();
     pw_thread_loop_lock(s.loop);
@@ -227,11 +314,11 @@ CaptureSession::CaptureSession(const Monitor &m) : impl(std::make_unique<Impl>()
     }
     if (s.stream) {
         pw_stream_add_listener(s.stream, &s.listener, &events, &s);
-        uint8_t buffer[1024];
+        uint8_t buffer[4096];
         spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
         spa_rectangle size{Width, Height};
         spa_fraction variable{0, 1}, minimum{1, 1}, maximum{60, 1};
-        const spa_pod *params[] = {static_cast<const spa_pod *>(spa_pod_builder_add_object(&b,
+        const spa_pod *params[2] = {static_cast<const spa_pod *>(spa_pod_builder_add_object(&b,
             SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat,
             SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
             SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
@@ -239,9 +326,28 @@ CaptureSession::CaptureSession(const Monitor &m) : impl(std::make_unique<Impl>()
             SPA_FORMAT_VIDEO_size, SPA_POD_Rectangle(&size),
             SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&variable),
             SPA_FORMAT_VIDEO_maxFramerate, SPA_POD_CHOICE_RANGE_Fraction(&maximum, &minimum, &maximum)))};
-        // No modifier is offered, so KWin negotiates CPU-mappable memfd buffers, never DMA-BUF.
+        int count = 1;
+        if (s.converter) {
+            params[1] = params[0];
+            spa_pod_frame object{}, choice{};
+            spa_pod_builder_push_object(&b, &object, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
+            spa_pod_builder_add(&b, SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
+                SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+                SPA_FORMAT_VIDEO_format, SPA_POD_CHOICE_ENUM_Id(3, SPA_VIDEO_FORMAT_BGRA, SPA_VIDEO_FORMAT_BGRA, SPA_VIDEO_FORMAT_BGRx),
+                SPA_FORMAT_VIDEO_size, SPA_POD_Rectangle(&size),
+                SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&variable),
+                SPA_FORMAT_VIDEO_maxFramerate, SPA_POD_CHOICE_RANGE_Fraction(&maximum, &minimum, &maximum), 0);
+            spa_pod_builder_prop(&b, SPA_FORMAT_VIDEO_modifier, SPA_POD_PROP_FLAG_MANDATORY | SPA_POD_PROP_FLAG_DONT_FIXATE);
+            spa_pod_builder_push_choice(&b, &choice, SPA_CHOICE_Enum, 0);
+            const auto mods = s.converter->modifiers();
+            spa_pod_builder_long(&b, mods.front());
+            for (auto mod : mods) spa_pod_builder_long(&b, mod);
+            spa_pod_builder_pop(&b, &choice);
+            params[0] = static_cast<const spa_pod *>(spa_pod_builder_pop(&b, &object));
+            count = requireDma ? 1 : 2;
+        }
         result = pw_stream_connect(s.stream, PW_DIRECTION_INPUT, PW_ID_ANY,
-            pw_stream_flags(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS), params, 1);
+            pw_stream_flags(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS), params, count);
     }
     pw_thread_loop_unlock(s.loop);
     if (!s.core) throw std::runtime_error("Cannot connect to PipeWire");
@@ -250,6 +356,7 @@ CaptureSession::CaptureSession(const Monitor &m) : impl(std::make_unique<Impl>()
 CaptureSession::~CaptureSession() = default;
 uint64_t CaptureSession::captured() const { return impl->arrivals.load(); }
 uint64_t CaptureSession::dropped() const { return impl->drops.load(); }
+bool CaptureSession::usingDmaBuf() const { return impl->receivedDma.load(); }
 Sample CaptureSession::next(int timeoutMs)
 {
     checkError();
@@ -257,9 +364,7 @@ Sample CaptureSession::next(int timeoutMs)
     impl->available.wait_for(lock, std::chrono::milliseconds(timeoutMs),
         [this] { return !impl->queue.empty() || !impl->error.empty(); });
     if (impl->queue.empty()) return {};
-    auto sample = std::move(impl->queue.front());
-    impl->queue.pop_front();
-    return sample;
+    return takeLatest(impl->queue, impl->drops);
 }
 void CaptureSession::checkError()
 {

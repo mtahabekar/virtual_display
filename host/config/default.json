@@ -1,4 +1,10 @@
 {
+  "encoder": "auto",
+  "allow_nvenc_fallback": true,
+  "capture_memory": "auto",
+  "intel_render_node": "",
+  "gop_frames": 60,
+  "vbv_ms": 50,
   "bitrate_mbps": 60,
   "port": 27183,
   "laptop_off_when_connected": true

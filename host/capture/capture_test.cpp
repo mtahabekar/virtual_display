@@ -30,7 +30,7 @@ int main(int argc, char **argv)
         while (Clock::now() - started < std::chrono::seconds(seconds)) {
             auto sample = capture.next();
             if (!sample) continue;
-            quest::MappedFrame frame(sample.get());
+            quest::MappedFrame frame(sample);
             if (firstPts < 0) { firstPts = frame.ptsUs; first = frame.copyImage(); }
             lastPts = frame.ptsUs;
             ++frames;

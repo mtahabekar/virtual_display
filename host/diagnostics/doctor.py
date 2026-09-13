@@ -9,6 +9,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tools'))
+from gpu_devices import discover as discover_gpus
 MONITOR_COUNT = 2  # keep in sync with host/monitors.h
 EXPECTED = {f"QUEST-{i + 1}" for i in range(MONITOR_COUNT)}
 
@@ -98,7 +100,13 @@ def main():
     nodes = decode(pw)
     record("pipewire_connection", isinstance(nodes, list), pw if not isinstance(nodes, list) else "pw-dump connected")
     gpu = command(["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"])
-    record("nvidia", gpu.get("ok"), gpu)
+    inventory = discover_gpus()
+    evidence['gpu_devices'] = inventory
+    evidence['nvidia_optional'] = gpu
+    intel = any(d['vendor'] == '0x8086' and 'render' in d and Path(d['render']).exists() for d in inventory)
+    record('hardware_gpu_available', intel or gpu.get('ok'),
+           {'intel_render_available': intel, 'nvidia_available': gpu.get('ok'),
+            'note': 'Inventory only; use encoder-smoke for the selected backend. NVIDIA is not required for Intel encoding.'})
 
     versions = {"kernel": os.uname().release, "os_release": Path("/etc/os-release").read_text()}
     ffmpeg = ["python3", str(ROOT / "tools/media.py"), "ffmpeg"] if (ROOT / ".deps/root/usr/bin/ffmpeg").exists() else ["ffmpeg"]
@@ -111,10 +119,11 @@ def main():
     }.items():
         versions[label] = command(cmd)
     evidence["versions"] = versions
-    evidence["future_milestone_capabilities"] = {
+    evidence["hardware_encoder_capabilities"] = {
         "pipewiresrc": command(["gst-inspect-1.0", "pipewiresrc"]),
         "nvh264enc": command(["gst-inspect-1.0", "nvh264enc"]),
         "libavcodec_h264_nvenc": command([*ffmpeg, "-hide_banner", "-h", "encoder=h264_nvenc"]),
+        "libavcodec_h264_vaapi": command([*ffmpeg, "-hide_banner", "-h", "encoder=h264_vaapi"]),
         "ffmpeg_nvenc": command(["ffmpeg", "-hide_banner", "-encoders"]),
     }
 

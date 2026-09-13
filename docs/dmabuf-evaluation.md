@@ -1,5 +1,7 @@
 # DMA-BUF capture evaluation
 
+Historical NVIDIA/CUDA experiment. Its decision applies to that implementation, not the new Intel VAAPI path documented in [intel-host.md](intel-host.md). No Intel performance claim is inferred from these measurements.
+
 September 12, 2026; baseline `c4714b3`, two Quest outputs.
 
 **Decision: keep the existing CPU capture path.** A working GPU capture prototype reduced CPU consumption but did not demonstrate a material frame-rate or processing-time improvement sufficient to replace the stable implementation. This does not rule out a better GPU implementation; removal of the CPU copy is not a demonstrated fix for 60 FPS here.

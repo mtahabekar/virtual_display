@@ -45,7 +45,7 @@ def main():
     desktop = applications / "org.questdisplays.Host.desktop"
     desktop.write_text(
         "[Desktop Entry]\nType=Application\nName=Quest Displays Host\n"
-        "Comment=Own three KWin virtual monitors\nNoDisplay=true\n"
+        "Comment=Own two KWin virtual monitors\nNoDisplay=true\n"
         f'Exec="{escaped}" --run\nTerminal=false\n'
         # KDE's custom QStringList property uses commas, not XDG semicolons.
         "X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1\n"
