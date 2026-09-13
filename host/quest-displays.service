@@ -16,6 +16,5 @@ RestartSteps=4
 RestartMaxDelaySec=90
 TimeoutStopSec=10
 ExecStopPost=-%h/.local/libexec/quest-laptop-display on
-
-[Install]
-WantedBy=plasma-workspace.target
+# Not enabled at login: quest-headset.service starts and stops this unit
+# as the headset is attached and detached over USB.

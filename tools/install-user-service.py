@@ -15,7 +15,8 @@ for directory in (libexec, units, config):
 subprocess.run([sys.executable, str(root / "tools/register-desktop.py"), "--native-user-paths"], check=True)
 for source, name in [(root / "build/quest-streams", "quest-streams"),
                      (root / "tools/stream-launcher.py", "quest-stream-launcher"),
-                     (root / "tools/laptop-display.py", "quest-laptop-display")]:
+                     (root / "tools/laptop-display.py", "quest-laptop-display"),
+                     (root / "tools/headset-watch.py", "quest-headset-watch")]:
     with tempfile.NamedTemporaryFile(dir=libexec, delete=False) as file:
         temporary = Path(file.name)
     try:
@@ -24,10 +25,11 @@ for source, name in [(root / "build/quest-streams", "quest-streams"),
         temporary.replace(libexec / name)
     finally:
         temporary.unlink(missing_ok=True)
-for name in ("quest-displays.service", "quest-streams.service"):
+for name in ("quest-displays.service", "quest-streams.service", "quest-headset.service"):
     shutil.copyfile(root / "host" / name, units / name)
 if not (config / "config.json").exists():
     shutil.copyfile(root / "host/config/default.json", config / "config.json")
 subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
 print("Installed user units. Stop any manual display host, then run:")
-print("systemctl --user enable --now quest-displays.service")
+print("systemctl --user disable quest-displays.service")
+print("systemctl --user enable --now quest-headset.service")

@@ -1,0 +1,14 @@
+[Unit]
+Description=Create Quest virtual monitors while the headset is attached over USB
+After=plasma-kwin_wayland.service
+PartOf=graphical-session.target
+ConditionEnvironment=XDG_SESSION_TYPE=wayland
+
+[Service]
+Type=exec
+ExecStart=%h/.local/libexec/quest-headset-watch
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=plasma-workspace.target

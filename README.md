@@ -8,17 +8,18 @@ The first headset run exposed transport-lock starvation that made QUEST-1 and QU
 
 ## Current installation and everyday commands
 
-The user services are installed and `quest-displays.service` is enabled for Plasma login. They are running now. No root service, kernel, driver, desktop environment, or system package was changed.
+The user services are installed and `quest-headset.service` is enabled for Plasma login. It watches `adb track-devices`: when a Quest is attached over USB it reapplies `adb reverse tcp:27183 tcp:27183`, starts `quest-displays.service`, and launches the Quest client with `--ei streams 2` (set `"launch_app_on_connect": false` in the config to skip the launch). When the headset has been gone for 3 seconds it stops `quest-displays.service`, so the virtual monitors disappear, windows move to the laptop display, and the laptop display is re-enabled first. `quest-displays.service` is intentionally not enabled at login. No root service, kernel, driver, desktop environment, or system package was changed.
 
 ```bash
-systemctl --user status quest-displays quest-streams
+systemctl --user status quest-headset quest-displays quest-streams
+journalctl --user -u quest-headset -f          # attach/detach events
 systemctl --user start quest-displays
 systemctl --user stop quest-displays       # stops encoding and removes virtual monitors
 systemctl --user restart quest-displays    # recreates monitors and restarts streaming
 journalctl --user -u quest-displays -u quest-streams -f
 ```
 
-`quest-displays.service` owns the monitors and starts `quest-streams.service`. The latter waits for verified output state, then execs the C++ streaming process. Encoder failures can restart streaming without removing the monitors. Stopping the display service also stops streaming. Autostart is tied to `plasma-workspace.target`; session checks require Wayland and a live KWin instance. Login/reboot recreation is configured, but an actual logout/reboot has not been tested in this session. Manual and service restarts have been tested.
+`quest-displays.service` owns the monitors and starts `quest-streams.service`. The latter waits for verified output state, then execs the C++ streaming process. Encoder failures can restart streaming without removing the monitors. Stopping the display service also stops streaming. The headset watcher's autostart is tied to `plasma-workspace.target`; session checks require Wayland and a live KWin instance. Login/reboot recreation is configured, but an actual logout/reboot has not been tested in this session. Manual and service restarts have been tested.
 
 Streaming defaults: `127.0.0.1:27183`, H.264 High profile, 4:2:0, up to 60 Mbps VBR per stream, no B-frames, 60-frame GOP, NVENC preset p1 with ultra-low-latency tuning. Both encoders share one CUDA context. The USB link carries about 2 Gbps through ADB (measured with `adb push`), so the host spends bits rather than encoder effort. Static text does not consume the full bitrate budget. The service does not record video to disk. Edit `~/.config/quest-displays/config.json` (`bitrate_mbps`, `port`, `laptop_off_when_connected`), then restart `quest-streams`.
 
