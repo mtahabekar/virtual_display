@@ -22,8 +22,9 @@ public:
 protected:
     void paintEvent(QPaintEvent *) override {
         QPainter p(this);
+        p.scale(width() / 2560.0, height() / 1440.0);
         const QColor colors[] = {QColor("#153043"), QColor("#273a23"), QColor("#39273c")};
-        p.fillRect(rect(), colors[id]);
+        p.fillRect(QRect(0, 0, 2560, 1440), colors[id]);
         p.setPen(QColor("#ffffff"));
         p.setFont(QFont("DejaVu Sans", 48, QFont::Bold));
         p.drawText(80, 120, QString("QUEST-%1  /  2560 × 1440").arg(id + 1));
@@ -65,6 +66,12 @@ int main(int argc, char **argv) {
             window->windowHandle()->setScreen(screen);
             window->setGeometry(screen->geometry());
             window->showFullScreen();
+            QTimer::singleShot(1000, window, [window, screen] {
+                const auto actual = window->windowHandle()->screen();
+                std::cout << "Pattern target=" << screen->name().toStdString()
+                          << " actual=" << actual->name().toStdString() << std::endl;
+                if (actual != screen) QCoreApplication::exit(3);
+            });
             ++count;
         }
     }
